@@ -30,7 +30,7 @@ source("code/functions.R")
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2023-12-05") # change this each time the data is updated
+refresh_date <- as.Date("2023-12-07") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
@@ -40,7 +40,9 @@ cut_off_date_Qtrly <- ymd("2023-04-01") # quarter beginning (most complete) e.g.
 
 # metadata file - for num, den, measure_value descriptions
 
-metadata <- read.xlsx("data/basefiles/measure metadata.xlsx", sheet = 1)
+metadata <- read.xlsx("data/basefiles/measure metadata.xlsx", sheet = 1) %>% 
+  select(-c("key_measure_cat", "key_measure_ref", "key_measure_label")
+         ) # for use after refresh in January 2023
 
 # Maternity team's SMR02 location and filename
 
