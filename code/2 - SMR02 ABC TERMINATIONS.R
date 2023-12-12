@@ -4,9 +4,9 @@
 # Pregnancies booked, Average gestation at booking, Terminations, Average gestation at termination
 # Sourced from the Maternity Team's SMR02 data file, the ABC base file and the Terminations data file
 # Bev Dodds
-# 13 July 2023
+# 12 December 2023
 # Last update by Bev Dodds
-# Latest update description: reformatted code to snakecase
+# Latest update description: updated link to hbcipher file
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.1.2 - note use of dplyr 1.1.0
@@ -44,7 +44,7 @@ island_boards <- c("NHS Orkney", "NHS Western Isles", "NHS Shetland")
 # read in HBNAME cipher names (for HBNAME of Treatment) in WI dashboard format,
 # also for HBNAME labels
 
-hbcipher <- read.csv("data/basefiles/hb14_hb19.csv", stringsAsFactors=FALSE) %>% 
+hbcipher <- read.csv("../basefiles/hb14_hb19.csv", stringsAsFactors=FALSE) %>% 
   filter(is.na(HBDateArchived)) %>% # want the latest NHS Board codes
   select(HBCIPHER, HBCODE, HBNAME, HBLABEL)
 

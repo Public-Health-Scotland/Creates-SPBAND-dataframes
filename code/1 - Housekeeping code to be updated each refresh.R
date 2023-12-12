@@ -3,9 +3,10 @@
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Bev Dodds
 # 12 July 2023
-# Last update: 19 September 2023
+# Last update: 12 December 2023
 # Last update by: Bev Dodds
-# Latest update description: September refresh for October first public release
+# Latest update description:Tweaked code to keep input data separate; also added home birth code to 
+# extremely pre-term R code
 # Type of script - preparation
 # Written/run on Posit Workbench
 # Version of R - 4.1.2
@@ -34,13 +35,13 @@ refresh_date <- as.Date("2023-12-07") # change this each time the data is update
 
 # set cut-off date - what month are we happy to publish to?
 
-cut_off_date <- ymd("2023-06-01") # month beginning
+cut_off_date <- ymd("2023-06-01") # month beginning, usually increments by 3 months
 cut_off_date_ABC <- ymd("2023-08-01") # month beginning (ABC more timely than SMR02)
-cut_off_date_Qtrly <- ymd("2023-04-01") # quarter beginning (most complete) e.g. Jan-Mar
+cut_off_date_Qtrly <- ymd("2023-04-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
 
 # metadata file - for num, den, measure_value descriptions
 
-metadata <- read.xlsx("data/basefiles/measure metadata.xlsx", sheet = 1) %>% 
+metadata <- read.xlsx("../basefiles/measure metadata.xlsx", sheet = 1) %>% 
   select(-c("key_measure_cat", "key_measure_ref", "key_measure_label")
          ) # for use after refresh in January 2023
 
@@ -59,13 +60,13 @@ file.exists(ABC_filename)
 # update Terminations data loction and filename here
 
 terminations_filename <- 
-  "//PHI_conf/SexualHealth/Topics/Terminations/Projects/20200505-Covid19/Analysis/AAS-2017-onwards-covid-20230914.rds"
+  "../basefiles/Terminations/AAS-2017-onwards-covid-20230914.rds"
 
 file.exists(terminations_filename)
 
 # update file name that contains NRS quarterly data (published)
 
-NRS_filename <- "./data/basefiles/NRS/Births deaths and other vital events - 2023 Q2 - Table Q1.xlsx"
+NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2023 Q2 - Table Q1.xlsx"
 
 file.exists(NRS_filename)
 

@@ -3,9 +3,9 @@
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Sourced from SMRA SMR02
 # Bev Dodds
-# 12 July 2023
+# 12 December 2023
 # Last update by Bev Dodds
-# Latest update description: initialised code
+# Latest update description: added code to pull in home births (v. unlikely)
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on Posit Workbench
 # Version of R - 4.1.2
@@ -48,11 +48,21 @@ preterm <- as_tibble (dbGetQuery(smra_connect, statement = "SELECT
                             ADMISSION_REASON, ADMISSION_TRANSFER_FROM,
                             ADMISSION_TYPE, DISCHARGE_TYPE, DISCHARGE_TRANSFER_TO 
                             FROM ANALYSIS.SMR02_PI
-                            WHERE DISCHARGE_DATE >= To_date('2018-01-01', 'YYYY-MM-DD') AND
+                            WHERE (DISCHARGE_DATE >= To_date('2018-01-01', 'YYYY-MM-DD') AND
                                   CONDITION_ON_DISCHARGE = 3 AND
-                                    ESTIMATED_GESTATION BETWEEN 22 and 26"))
+                                    ESTIMATED_GESTATION BETWEEN 22 and 26)
+                            OR 
+                            (LOCATION = 'D201N' AND DATE_OF_DELIVERY >= To_date('2018-01-01', 'YYYY-MM-DD') AND
+                              CONDITION_ON_DISCHARGE = 3 AND
+                              ESTIMATED_GESTATION BETWEEN 22 and 26)"))
 
 names(preterm) <- to_snake_case(names(preterm)) # convert variable names to snake_case
+
+# Home births (very unlikely at 22-26 weeks) do not have a discharge date. Recode discharge date = 
+# date of delivery.
+
+preterm <- preterm %>% 
+  mutate(discharge_date = if_else(location == 'D201N', date_of_delivery, discharge_date))
 
 # select deliveries where at least one baby was born alive 
 # (OUTCOME_OF_PREGNANCY_BABY_1,2,3 in (1, 3, 4, 5)) (2 = still born)
