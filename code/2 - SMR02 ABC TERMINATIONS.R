@@ -163,7 +163,7 @@ scotland <- analysis_raw %>%
 
 # add Scotland data to original dataset
 
-analysis_raw <- bind_rows(analysis_raw, scotland) 
+analysis_raw <- bind_rows(scotland, analysis_raw) 
 
 # rm(scotland)
 
@@ -1041,11 +1041,11 @@ for (i in seq_along(download_dataframe)) {
 
 ### 13 - Save data for SPBAND ----
 
-save(annual_dataframe, 
+save(annual-dataframe, 
      download_dataframe,
      runchart_dataframe,
      factor_labels_year,
-  file = paste0(dashboard_dataframes_folder, "/SMR02_ABC_Terminations.RData")
+  file = paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations.RData")
 )
 
 # once the data has been checked in the PRA dashboard it should be copied to the SPBAND data folder 

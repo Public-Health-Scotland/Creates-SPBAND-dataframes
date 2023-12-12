@@ -200,12 +200,12 @@ extremely_preterm_data <- left_join(extremely_preterm_data, metadata,
 ### 4 - Save extremely_preterm_data for use in dashboard ----
 
 saveRDS(extremely_preterm_data,
-        paste0(dashboard_dataframes_folder, "/extremely_preterm_data.rds")
+        paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")
         )
 
 # if wanting to load again for testing
 
-extremely_preterm_data <- readRDS(paste0(dashboard_dataframes_folder, "/extremely_preterm_data.rds")
+extremely_preterm_data <- readRDS(paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")
                                   )
 
 ### 5 - Testing charts look OK ----

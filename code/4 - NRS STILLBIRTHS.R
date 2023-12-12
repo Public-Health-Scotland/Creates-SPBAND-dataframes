@@ -257,12 +257,12 @@ NRS_timeseries <- arrange(NRS_timeseries, measure_cat2, quarter_label)
 ### 5 - Save NRS_timeseries data for use in dashboard ----
 
 saveRDS(NRS_timeseries,
-  file = paste0(dashboard_dataframes_folder, "/stillbirths_infant_deaths_data.rds")
+  file = paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds")
   )
 
 # if wanting to load again for testing
 
-NRS_timeseries <- readRDS(paste0(dashboard_dataframes_folder, "/stillbirths_infant_deaths_data.rds"))
+NRS_timeseries <- readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds"))
 
 ### 6 - Testing charts look OK ----
 

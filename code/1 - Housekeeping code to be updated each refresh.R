@@ -31,7 +31,7 @@ source("code/functions.R")
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2023-12-07") # change this each time the data is updated
+refresh_date <- as.Date("2023-09-19") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
@@ -72,12 +72,12 @@ file.exists(NRS_filename)
 
 # set local output folder for data - dated automatically
 
-data_path <- paste0("./data/output/", refresh_date, " extract")
+data_path <- paste0("./data/", refresh_date, " extract")
 
 # create this folder if it doesn't already exist
 
 if (!dir.exists(data_path)) {
-  dir.create(data_path, showWarnings = TRUE, recursive = FALSE, mode = "2770")
+  dir.create(data_path, showWarnings = TRUE, recursive = TRUE, mode = "2770")
 }
 
 # create the dashboard_dataframes folder
@@ -87,7 +87,7 @@ dashboard_dataframes_folder <- paste0(data_path, "/dashboard_dataframes")
 # create this folder if it doesn't already exist
 
 if (!dir.exists(dashboard_dataframes_folder)) {
-  dir.create(dashboard_dataframes_folder, showWarnings = TRUE, recursive = FALSE, mode = "2770")
+  dir.create(dashboard_dataframes_folder, showWarnings = TRUE, recursive = TRUE, mode = "2770")
 }
 
 # sets colour palette to the PHS colour scheme
