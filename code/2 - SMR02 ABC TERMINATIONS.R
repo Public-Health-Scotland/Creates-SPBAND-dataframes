@@ -820,10 +820,9 @@ everything_dataframe <- bind_rows(inductions,
                                   type_of_birth,
                                   gestation,
                                   bookings,
-                                  terminations,
                                   # disclosure controls needed for further breakdown
-                                  # filter(terminations,
-                                  #        measure_cat == "all terminations" & 
+                                  filter(terminations,
+                                         measure_cat == "all terminations"), # & 
                                   #          hbname != "NHS Orkney, NHS Shetland and NHS Western Isles"),
                                   av_gestation) %>% 
                                   #counts) 
