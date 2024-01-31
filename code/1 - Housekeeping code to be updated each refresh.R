@@ -91,7 +91,7 @@ if (!dir.exists(dashboard_dataframes_folder)) {
 
 # map the Excel templates folder (for accessible downloads)
 
-excel_templates_folder <- "./data/basefiles/excel templates/"
+excel_templates_folder <- "../basefiles/excel templates/"
 
 # sets colour palette to the PHS colour scheme
 
