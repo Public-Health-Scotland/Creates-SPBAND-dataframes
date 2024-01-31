@@ -23,38 +23,57 @@ percentage = function(x, y, na.rm = TRUE) {
 
 counts <- 
   function(dataset = births, variable, pre_pan = pre_pan, pre_pan_date = pre_pan_date,
-           subgroup = NULL, tally_var = births, suffix, measure, key, 
-           key_measure_cat, key_measure_label){
+           subgroup = NULL, tally_var = births, suffix, measure){ 
+    
+    # key, key_measure_cat, key_measure_label){
     
     name <- substitute(subgroup)
     #print(name)
     
     data <- filter({{dataset}}, !is.na({{variable}})) # selects and filters dataset (removes NAs)
     
-    # if({{measure}} %in% c("BOOKINGS", "TERMINATIONS", "GESTATION AT BOOKING",
-    #                          "GESTATION AT TERMINATION")) { # only shown monthly
-    #   
-    #   data <- filter(data, period != "Q") # removes quarterly data
-    #     
-    #   } else { 
-    
-    # if({{measure}} != "TYPE OF BIRTH") { # only shown quarterly except TOB for MCQIC
-    #     
-    #     data <- filter(data, period != "M") # removes monthly data except for TYPE OF BIRTH
-    #     }
-    #   } ##### redundant
-    
-    data <- data %>% 
+    if({{measure}} == "TERMINATIONS") { # TERMINATIONS has no grouping variable
       
-      # aggregates numerator (num) over specified group 
-      
-      select(dataset, hbtype, hbname, {{pre_pan}}, {{pre_pan_date}}, date,
-             period, {{subgroup}}, measure_cat := {{variable}}, {{tally_var}}) %>%
-      group_by(dataset, hbtype, hbname, date, period, {{pre_pan}}, {{pre_pan_date}},
-               {{subgroup}}, measure_cat) %>% 
-      summarise(num = sum({{tally_var}}))
-
       data <- data %>% 
+        
+        # aggregates numerator (num)
+        
+        select(dataset, hbtype, hbname, {{pre_pan}}, {{pre_pan_date}}, date,
+               period, {{subgroup}},
+               {{tally_var}}) %>%
+        group_by(dataset, hbtype, hbname, date, period, {{pre_pan}}, {{pre_pan_date}},
+                 {{subgroup}}) %>%
+        summarise(num = sum({{tally_var}})) %>% 
+        mutate(measure_cat = "total")
+      
+    } else {
+      
+    # 
+    # # if({{measure}} %in% c("BOOKINGS", "TERMINATIONS", "GESTATION AT BOOKING",
+    # #                          "GESTATION AT TERMINATION")) { # only shown monthly
+    # #   
+    # #   data <- filter(data, period != "Q") # removes quarterly data
+    # #     
+    # #   } else { 
+    # 
+    # # if({{measure}} != "TYPE OF BIRTH") { # only shown quarterly except TOB for MCQIC
+    # #     
+    # #     data <- filter(data, period != "M") # removes monthly data except for TYPE OF BIRTH
+    # #     }
+    # #   } ##### redundant
+    # 
+      data <- data %>%
+        
+        # aggregates numerator (num) over specified group
+        
+        select(dataset, hbtype, hbname, {{pre_pan}}, {{pre_pan_date}}, date,
+               period, {{subgroup}}, measure_cat := {{variable}}, {{tally_var}}) %>%
+        group_by(dataset, hbtype, hbname, date, period, {{pre_pan}}, {{pre_pan_date}},
+                 {{subgroup}}, measure_cat) %>%
+        summarise(num = sum({{tally_var}}))
+      
+      
+      data <- data %>%
         
         # pivots numerators from measure_cat to calculate totals
         
@@ -65,23 +84,24 @@ counts <-
         mutate(`num_total` = sum(across(where(is.numeric))),
                den = `num_total` - sum(if_any(contains("unknown"))),
                `num_total exc. unknown` = den) %>%
-        relocate(`num_total exc. unknown`, 
+        relocate(`num_total exc. unknown`,
                  .before = contains("unknown"))
-
-      if({{measure}} == "TYPE OF BIRTH"){ 
+      
+      if({{measure}} == "TYPE OF BIRTH"){
         
         data <- data %>%
           
           # calculates "all" caesarean births
           
           mutate(`num_all caesarean births` =
-                 `num_planned caesarean births` +
-                 `num_unplanned caesarean births`) %>%
+                   `num_planned caesarean births` +
+                   `num_unplanned caesarean births`) %>%
           relocate(`num_all caesarean births`,
                    .before = `num_planned caesarean births`)
+        
       }
-
-      data <- data %>% 
+        
+      data <- data %>%
         
         # pivots longer again
         
@@ -89,40 +109,41 @@ counts <-
                      names_to = "measure_cat",
                      names_prefix = "num_",
                      values_to = "num")
-      
-      if(!{{measure}} %in% c("BOOKINGS", "TERMINATIONS")) {
-        
-        data <- data %>% 
-          
-          # calculates percentages (based on "known" values in denominator)
-          mutate(measure_value = if_else(!grepl("unknown", measure_cat) &
-                                     !grepl("total", measure_cat),
-                                   percentage(num, den),
-                                   NA_real_),
-                 # sets "den" to NA for "unknown" and "total" values
-                 den = if_else(!grepl("unknown", measure_cat) &
-                                 !grepl("total", measure_cat),
-                               den, NA_real_)
-          )
-      } else {
-          data <- data %>% 
-            mutate(measure_value = num, # for BOOKINGS AND TERMINATIONS where there is no percentage measure
-                   num = NA,
-                   den = NA)
-        }
-      
-      data <- data %>% 
-        
-        # add variables to the dataframe
-        
-        mutate(
-        suffix = if_else(suffix == "", NA, suffix),
-        measure = measure,
-        key_measure_cat = measure_cat == key_measure_cat,
-        key_measure_ref = if_else(key_measure_cat == TRUE, key, NA),
-        key_measure_label = if_else(key_measure_cat == TRUE, key_measure_label, NA)) %>%
-      rename(subgroup_cat = {{subgroup}})
+    }
 
+    if(!{{measure}} %in% c("BOOKINGS", "TERMINATIONS")) {
+      
+      data <- data %>%
+        
+        # calculates percentages (based on "known" values in denominator)
+        mutate(measure_value = if_else(!grepl("unknown", measure_cat) &
+                                         !grepl("total", measure_cat),
+                                       percentage(num, den),
+                                       NA_real_),
+               # sets "den" to NA for "unknown" and "total" values
+               den = if_else(!grepl("unknown", measure_cat) &
+                               !grepl("total", measure_cat),
+                             den, NA_real_)
+        )
+    } else {
+      data <- data %>%
+        mutate(measure_value = num, # for BOOKINGS AND TERMINATIONS where there is no percentage measure
+               num = NA,
+               den = NA)
+    }
+    
+    data <- data %>%
+      
+      # add variables to the dataframe
+      
+      mutate(
+        suffix = if_else(suffix == "", NA, suffix),
+        measure = measure) %>%
+        # key_measure_cat = measure_cat == key_measure_cat,
+        # key_measure_ref = if_else(key_measure_cat == TRUE, key, NA),
+        # key_measure_label = if_else(key_measure_cat == TRUE, key_measure_label, NA)) %>%
+      rename(subgroup_cat = {{subgroup}})
+    
     if(!is.null(name)) data$subgroup = as.character(name)
     
     return(data)

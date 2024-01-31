@@ -70,7 +70,7 @@ preterm <- preterm %>%
 preterm <- preterm %>% 
 mutate(date = ymd(discharge_date),
        date = as.Date(as.yearqtr(date)), # first day of quarter (e.g. 2020-01-01, 2020-04-01)
-       quarter_label = qtr(date, format = "short"), # e.g. Jan-Mar 2020
+       date_label = qtr(date, format = "short"), # e.g. Jan-Mar 2020
        period = "Q",
        dataset = "SMR02",
        hbtype = "TREATMENT",
@@ -138,7 +138,7 @@ preterm <- readRDS(paste0(data_path, "/", "raw_preterm.rds"))
 # sum up to quarterly periods, create total and den
 
 extremely_preterm_data <- preterm %>% 
-  group_by(dataset, hbtype, hbname, period, date, quarter_label, measure) %>% 
+  group_by(dataset, hbtype, hbname, period, date, date_label, measure) %>% 
   summarise(NICU_22_26 = sum(NICU_22_26),
             excluded_from_NICU_22_26 = sum(excluded_from_NICU_22_26),
             total = sum(all_22_26),
@@ -146,10 +146,10 @@ extremely_preterm_data <- preterm %>%
   ) %>% 
   ungroup()
 
-# make quarter_label a factor to ensure date order is correct
+# make date_label a factor to ensure date order is correct
 
-extremely_preterm_data$quarter_label <- factor(extremely_preterm_data$quarter_label,
-                                               levels = extremely_preterm_data$quarter_label,
+extremely_preterm_data$date_label <- factor(extremely_preterm_data$date_label,
+                                               levels = extremely_preterm_data$date_label,
                                                ordered = TRUE)
 
 # pivot longer to make measure_cat and num variables - in keeping with other measures
@@ -161,33 +161,34 @@ extremely_preterm_data <- extremely_preterm_data %>%
          measure_value = percentage(num, den)
   )
 
-# calculate mean, standard deviation, upper and lower warning and control limits for the percentage
+# calculate centreline (mean), standard deviation, upper and lower warning and control limits for the percentage
 # 22-26 weeks born in a hospital with a nicu unit, then drop standard deviation
 
 temp <- filter(extremely_preterm_data,
                measure_cat == "NICU_22_26") %>%
   group_by(dataset, hbtype, hbname, period, measure) %>%
-  mutate(`mean` = sum(num)/sum(den) * 100,
-         sd = sqrt(`mean` * (100 - `mean`) / den),
-         lower_warning_limit = if_else(`mean` - (sd * 2) < 0, 0,
-                                       `mean` - (sd * 2)),
-         upper_warning_limit = if_else(`mean` + (sd * 2) > 100, 100,
-                                       `mean` + (sd * 2)),
-         lower_control_limit = if_else(`mean` - (sd * 3) < 0, 0,
-                                       `mean` - (sd * 3)),
-         upper_control_limit = if_else(`mean` + (sd * 3) > 100, 100,
-                                       `mean` + (sd * 3))
+  mutate(centreline = sum(num)/sum(den) * 100,
+         sd = sqrt(centreline * (100 - centreline) / den),
+         lower_warning_limit = if_else(centreline - (sd * 2) < 0, 0,
+                                       centreline - (sd * 2)),
+         upper_warning_limit = if_else(centreline + (sd * 2) > 100, 100,
+                                       centreline + (sd * 2)),
+         lower_control_limit = if_else(centreline - (sd * 3) < 0, 0,
+                                       centreline - (sd * 3)),
+         upper_control_limit = if_else(centreline + (sd * 3) > 100, 100,
+                                       centreline + (sd * 3))
          )
 
-# join mean etc back onto the main preterm_Q data file
+# join centreline etc back onto the main preterm_Q data file, round values
 
 extremely_preterm_data <- left_join(extremely_preterm_data, temp,
-                                    by = join_by(dataset, hbtype, hbname, period, date, quarter_label,
+                                    by = join_by(dataset, hbtype, hbname, period, date, date_label,
                                                  measure, measure_cat, num, den, measure_value)
                                     ) %>%
   select(- sd) %>% 
-  relocate(den,
-           .before = measure_value)
+  mutate(across(c(measure_value:upper_control_limit), ~ round(., 3))
+  )
+  
 
 rm(temp) # tidy up
 
@@ -195,7 +196,11 @@ rm(temp) # tidy up
 
 extremely_preterm_data <- left_join(extremely_preterm_data, metadata, 
                                   by = c("measure", "measure_cat")) %>% 
-  mutate(suffix = "%")
+  mutate(suffix = "%") %>% 
+  janitor::remove_empty(., which = c("cols"), quiet = TRUE) %>% 
+  select(dataset, measure, hbtype:date_label, measure_cat, num, den, measure_value, plotted_on_charts, suffix, centreline:upper_control_limit,
+         shown_on_MIO, contains("description")
+         )
   
 ### 4 - Save extremely_preterm_data for use in dashboard ----
 
@@ -234,7 +239,7 @@ extremely_preterm_control_chart <-
 
   plot_ly(
     data = extremely_preterm_control_chart_data,
-    x = ~ quarter_label,
+    x = ~ date_label,
     y = ~ measure_value, # percentage
     type = "scatter",
     mode = "lines+markers",
@@ -248,7 +253,7 @@ extremely_preterm_control_chart <-
     ),
     name = ~ "percentage",
     hovertext = ~ paste0("Quarter: ",
-                         quarter_label,
+                         date_label,
                          "<br>",
                          "Percentage",
                          ": ",
@@ -260,7 +265,7 @@ extremely_preterm_control_chart <-
     hoverinfo = "text"
   ) %>%
   add_lines(
-    y = ~ `mean`, # mean (centreline)
+    y = ~ centreline, # mean (centreline)
     line = list(
       color = phs_colours("phs-blue"), # dotted blue line
       dash = "4",
@@ -349,11 +354,11 @@ extremely_preterm_context_data <-
     den = "All births at 22-26 weeks"
   ) %>% 
   mutate(mytext1 = paste0("Quarter: ", 
-                         quarter_label,
+                         date_label,
                          "<br>",
                          var_label(num), ": ", prettyNum(num, big.mark = ",")),
          mytext2 = paste0("Quarter: ", 
-                         quarter_label,
+                         date_label,
                          "<br>",
                          var_label(den), ": ", prettyNum(den, big.mark = ","))
          )

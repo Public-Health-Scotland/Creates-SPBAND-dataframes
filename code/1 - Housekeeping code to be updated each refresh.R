@@ -31,7 +31,7 @@ source("code/functions.R")
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2023-12-15") # change this each time the data is updated
+refresh_date <- as.Date("2024-01-25") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
@@ -41,9 +41,9 @@ cut_off_date_Qtrly <- ymd("2023-07-01") # quarter beginning (most complete) e.g.
 
 # metadata file - for num, den, measure_value descriptions
 
-metadata <- read.xlsx("../basefiles/measure metadata.xlsx", sheet = 1) %>% 
-  select(-c("key_measure_cat", "key_measure_ref", "key_measure_label")
-         ) # for use after refresh in January 2023
+metadata <- read.xlsx("../basefiles/measure metadata.xlsx", sheet = 1) #%>% 
+  #select(-c("MIO_measure_cat", "MIO_measure_ref", "MIO_measure_label")
+         #) # for use after refresh in January 2023
 
 # Maternity team's SMR02 location and filename
 
@@ -88,6 +88,10 @@ dashboard_dataframes_folder <- paste0(data_path, "/dashboard_dataframes")
 if (!dir.exists(dashboard_dataframes_folder)) {
   dir.create(dashboard_dataframes_folder, showWarnings = TRUE, recursive = TRUE, mode = "2770")
 }
+
+# map the Excel templates folder (for accessible downloads)
+
+excel_templates_folder <- "./data/basefiles/excel templates/"
 
 # sets colour palette to the PHS colour scheme
 
