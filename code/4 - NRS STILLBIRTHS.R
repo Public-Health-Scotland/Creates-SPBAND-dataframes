@@ -64,10 +64,10 @@ NRS$date <-
 
 NRS$date <- if_else(NRS$year == 2020 & NRS$quarter == "Full year", "2020", as.character(NRS$date))
 
-# create quarter_label - based on year and quarter 
+# create date_label - based on year and quarter 
 
 NRS <- NRS %>% 
-  mutate(quarter_label = case_match(quarter,
+  mutate(date_label = case_match(quarter,
                                     "1st" ~ paste("Jan-Mar", year, sep = " "),
                                     "2nd" ~ paste("Apr-Jun", year, sep = " "),
                                     "3rd" ~ paste("Jul-Sep", year, sep = " "),
@@ -83,7 +83,7 @@ NRS <- NRS %>%
 # "use_for_mean" marks the rows that contribute to the average (currently the pre-pandemic period to Oct-Dec 2019)
 
 NRS <- NRS %>%
-  mutate(drop = (year != 2020 & quarter == "Full year"), # | quarter_label == "Apr-Jun 2020"),
+  mutate(drop = (year != 2020 & quarter == "Full year"), # | date_label == "Apr-Jun 2020"),
          flag_NA = (year == 2020 & quarter %in% c("1st", "2nd", "3rd", "4th")),
          use_for_mean = (year <= 2019 & quarter != "Full year")
          ) %>% 
@@ -107,11 +107,11 @@ NRS$rowid <- case_match(NRS$rowid,
 
 NRS <- arrange(NRS, rowid)
 
-# extract all unique values of quarter_label to set factor levels in correct order (all quarters except Apr-Jun 2020,
+# extract all unique values of date_label to set factor levels in correct order (all quarters except Apr-Jun 2020,
 # uses 2020 instead)
 
-NRS$quarter_label = factor(NRS$quarter_label,
-                           levels = NRS$quarter_label,
+NRS$date_label = factor(NRS$date_label,
+                           levels = NRS$date_label,
                            ordered = TRUE)
 
 ### 4 - Create timeseries ----
@@ -127,7 +127,7 @@ NRS$quarter_label = factor(NRS$quarter_label,
 # Infant deaths are those that occur < 365 days, rate per 1000 live births
 
 NRS_timeseries <- NRS %>%
-  select(year, quarter, quarter_label, date, ends_with("number"), ends_with("rate"), use_for_mean,
+  select(year, quarter, date_label, date, ends_with("number"), ends_with("rate"), use_for_mean,
          flag_NA, - starts_with("perinatal")
          ) %>%
   rename_with(., ~ gsub("_number", "", .x, fixed = TRUE)) %>% 
@@ -171,7 +171,7 @@ denominators <- NRS_timeseries %>%
 # match rates to numbers
 
 NRS_timeseries <- left_join(numbers, rates,
-                            by = join_by(year, quarter, quarter_label, date, use_for_mean,
+                            by = join_by(year, quarter, date_label, date, use_for_mean,
                                          flag_NA, measure_cat)
                             )
 
@@ -184,6 +184,8 @@ NRS_timeseries <- bind_rows(denominators, NRS_timeseries)
 NRS_timeseries$measure_cat <- str_replace_all(NRS_timeseries$measure_cat, "_", " ")
 
 # populate den with correct denominator value
+# i.e. if measure_cat in use_live_births, den = live_births_total,
+# if measure_cat in use_live_plus_still_births, den = live_births_plus_stillbirths_total
 
 NRS_timeseries <- NRS_timeseries %>% 
   mutate(den = case_match(measure_cat,
@@ -192,13 +194,13 @@ NRS_timeseries <- NRS_timeseries %>%
                           .default = NA)) %>% 
   relocate(den,
            .after = num) %>% 
-  select(- starts_with("live"))
+  select(- starts_with("live")) # removes unnecessary columns
 
 # filter on use_for_mean to calculate mean rate per measure_cat
 
 mean_rates <- NRS_timeseries %>% 
   filter(use_for_mean == TRUE & !is.na(den)) %>%
-  summarise(mean = mean(measure_value, na.rm = TRUE),
+  summarise(mean = round(mean(measure_value, na.rm = TRUE), 2),
             .by = measure_cat
             )
 
@@ -227,8 +229,11 @@ NRS_timeseries <- NRS_timeseries %>%
          dataset = "NRS VITAL EVENTS",
          hbname = "SCOTLAND",
          hbtype = "REGISTRATION",
-         suffix = "rate"
-  ) %>% 
+         suffix = case_match(measure_cat,
+                             use_live_births ~ "rate per 1,000 live births",
+                             use_live_plus_still_births ~ "rate per 1,000 total (live + still) births",
+                             .default = NA)
+         ) %>% 
   left_join(., metadata,
             by = c("measure", "measure_cat")
             ) %>% 
@@ -252,7 +257,10 @@ NRS_timeseries$measure_cat2 <- factor(NRS_timeseries$measure_cat,
                                                   "infant deaths")
 )
 
-NRS_timeseries <- arrange(NRS_timeseries, measure_cat2, quarter_label)
+NRS_timeseries <- arrange(NRS_timeseries, measure_cat2, date_label) %>% 
+  janitor::remove_empty(., which = c("cols"), quiet = TRUE) %>% 
+  select(dataset, measure, hbtype, hbname, period, date, date_label, measure_cat, num, den, measure_value, plotted_on_charts, suffix, mean, extended, shown_on_MIO, measure_cat2, contains("description")
+         )
 
 ### 5 - Save NRS_timeseries data for use in dashboard ----
 
@@ -278,7 +286,7 @@ yaxislabel2 <- list(title = list(text = "rate per 1,000 live births",
 
 y_max <- max(NRS_timeseries$measure_value, na.rm = TRUE) 
 
-date_range_NRS <- as.character(unique(NRS_timeseries$quarter_label))
+date_range_NRS <- as.character(unique(NRS_timeseries$date_label))
 
 # tells plotly where to place x-axis tick marks and labels
 
@@ -306,24 +314,24 @@ stillbirths_runchart_data <-
 
 NRS_timeseries %>%
   filter(!measure_cat %like% "total" & # don't want the "total" values
-           quarter_label != "Jan-Mar 2020") %>% # remove point from plot for a balanced look
+           date_label != "Jan-Mar 2020") %>% # remove point from plot for a balanced look
   mutate(measure_label = paste0("Rate per 1000 ", den_description),
-         date_label = if_else(quarter_label == "2020",
-                              paste0("Year: ", quarter_label),
-                              paste0("Quarter: ", quarter_label)
+         hover_date_label = if_else(date_label == "2020",
+                              paste0("Year: ", date_label),
+                              paste0("Quarter: ", date_label)
          )
          ) %>% 
   set_variable_labels(
     mean = " average to Oct-Dec 2019",
     extended = " projected average from Jan-Mar 2020"
     ) %>% 
-    mutate(mytext = paste0(date_label,
+    mutate(mytext = paste0(hover_date_label,
                            "<br>",
                            str_to_sentence(measure_cat),
                            "<br>",
                            measure_label,
                            ": ",
-                           format(measure,
+                           format(measure_value,
                                   digits = 1,
                                   nsmall = 1)
                            )
@@ -336,7 +344,7 @@ stillbirth_charts <- stillbirths_runchart_data %>%
   lapply(
     function(d)
       plot_ly(d, 
-              x = ~ quarter_label,
+              x = ~ date_label,
               y = ~ extended, # dotted blue line # this line first as plotting last leads to overrun 
               type = "scatter",
               mode = "lines",

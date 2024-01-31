@@ -352,13 +352,12 @@ rm(analysis_both, analysis_M, analysis_Q, analysis_FY, analysis_CY)
 
 ### 10 - Create new variables ----
 
-# 10a - split analysis_ALL into component parts ----
+# 10a - Split analysis_ALL into component parts ----
 
 # remove data that will be incomplete using cut off dates
 
 births <- filter(analysis_ALL, dataset == "SMR02",
                      month_beginning <= cut_off_date)
-
 
 bookings_terminations <- bind_rows(filter(analysis_ALL, dataset == "ABC" &
                                            month_beginning <= cut_off_date_ABC),
@@ -367,7 +366,7 @@ bookings_terminations <- bind_rows(filter(analysis_ALL, dataset == "ABC" &
                                   ) %>% 
   janitor::remove_empty("cols")
 
-rm(analysis_raw, analysis_ALL) # tidy up
+# rm(analysis_raw, analysis_ALL) # tidy up
 
 # 10b - Add BIRTHS measures ----
 # all based on singletons
@@ -451,15 +450,15 @@ births$new_induced <-
                                 )
 
 # flag apgar 0-6, apgar 7-10, known apgar, unknown apgar in NEWAPGAR
-# APGAR = '00' to '06' - low apgar score
-# APGAR = '07' to '10' - desirable apgar score
+# APGAR = '00' to '06' - low (<7) apgar score
+# APGAR = '07' to '10' - apgar5 score of 7 or more
 # APGAR = 'NR' - not recorded
 # APGAR = 'RR' - not available as baby was being resuscitated
 
 births <- births %>% 
   mutate(new_apgar5 = case_when(
-    apgar5 %in% c('00', '01', '02', '03', '04', '05', '06') ~ 1, # low apgar score
-    apgar5 %in% c('07', '08', '09', '10') ~ 2, # desirable apgar score
+    apgar5 %in% c('00', '01', '02', '03', '04', '05', '06') ~ 1, # low (<7) apgar score
+    apgar5 %in% c('07', '08', '09', '10') ~ 2, # apgar5 score of 7 or more
     TRUE ~ 9 # not recorded/not not available/not known
   )
   )
@@ -474,7 +473,7 @@ births <- births %>%
 
 births$new_apgar5 <- 
   factor(births$new_apgar5, levels = c(1, 2, 9),
-         labels = c("low apgar5 scores", "desirable apgar5 scores",
+         labels = c("low (<7) apgar5 score", "apgar5 score of 7 or more",
                     "apgar5 score unknown")
   )
 
@@ -598,6 +597,8 @@ bookings_terminations$gest_grp3 <- factor(
              )
   )
 
+# remove island boards from the terminations dataset 
+
 bookings_terminations <- bookings_terminations %>% 
   filter(!(dataset == "TERMINATIONS" & hbname %in% island_boards)) %>% 
   mutate(count = 1
@@ -621,76 +622,38 @@ inductions <- # to test everything looks the same as before
   counts(
     variable = new_induced,
     suffix = "%", # for hovertext
-    measure = "INDUCTIONS",
-    key = "B1", # for multi-indicator overview
-    key_measure_cat = "induced",
-    key_measure_label = "Percentage of singleton live births at 37-42 weeks gestation that followed induction of labour"
-    # for multi-indicator overview and data download
+    measure = "INDUCTIONS"
   ) 
 
 type_of_birth <-
   counts(
     variable = new_type_of_birth_name,
     suffix = "%", # for hovertext
-    measure = "TYPE OF BIRTH",
-    key = "B2", # for multi-indicator overview
-    key_measure_cat = "all caesarean births",
-    key_measure_label = "Percentage of singleton live births that were caesarean births"  # for multi-indicator overview
+    measure = "TYPE OF BIRTH"
   )
-
-# additional "key" measure - spontaneous vaginal births
-  
-type_of_birth <- type_of_birth %>% 
-  mutate(
-    key_measure_cat = if_else(
-    measure_cat == "spontaneous vaginal births",
-    TRUE,
-    key_measure_cat
-    ),
-    key_measure_ref = if_else(
-    measure_cat == "spontaneous vaginal births",
-    "B2a",
-    key_measure_ref
-    ),
-    key_measure_label = if_else(
-    measure_cat == "spontaneous vaginal births",
-    "Percentage of singleton live births that were spontaneous vaginal births",
-    key_measure_label
-    )
-    )
 
 tears <-
   counts(
     variable = new_tears,
     suffix = "%", # for hovertext
-    measure = "TEARS",
-    key = "B3", # for multi-indicator overview
-    key_measure_cat = "3rd or 4th degree tears",
-    key_measure_label = "Percentage of women giving birth vaginally to a singleton live or stillborn baby with a cephalic presentation between 37-42 weeks gestation who have a third- or fourth-degree perineal tear"
-    # for multi-indicator overview
+    measure = "TEARS"
   )
 
 gestation1 <-
   counts(
     variable = gest_grp,
     suffix = "%", # for hovertext
-    measure = "GESTATION AT BIRTH",
-    key = NA, # for multi-indicator overview
-    key_measure_cat = NA,
-    key_measure_label = NA
+    measure = "GESTATION AT BIRTH"
   ) 
 
 gestation2 <-
   counts(
     variable = gest_grp2,
     suffix = "%", # for hovertext
-    measure = "GESTATION AT BIRTH",
-    key = "B4", # for multi-indicator overview
-    key_measure_cat = "under 37 weeks",
-    key_measure_label = "Percentage of singleton babies born alive at under 37 weeks gestation" # for multi-indicator overview
+    measure = "GESTATION AT BIRTH"
   ) %>% 
-    filter(measure_cat %in% c("under 37 weeks", "between 37 and 42 weeks")
-           ) # only want these categories
+    filter(measure_cat %in% c("under 37 weeks")
+           ) # only want this category
 
 # add gestation grouped files together
 
@@ -707,11 +670,7 @@ apgar5 <-
   counts(
     variable = new_apgar5,
     suffix = "%", # for hovertext
-    measure = "APGAR5",
-    key = "B5", # for multi-indicator overview
-    key_measure_cat = "low apgar5 scores",
-    key_measure_label = "Percentage of singleton live births at 37-42 weeks gestation that have a 5-minute Apgar score of <7"
-    # for multi-indicator overview
+    measure = "APGAR5"
   ) 
 
 ### 11b - BOOKINGS and TERMINATIONS measures ----
@@ -728,39 +687,40 @@ bookings <-
     variable = gest_grp3,
     tally_var = count,
     suffix = "", # for hovertext
-    measure = "BOOKINGS",
-    key = NA,
-    key_measure_cat = NA,
-    key_measure_label = NA
+    measure = "BOOKINGS"
     ) %>% 
   mutate(measure_cat = 
            if_else(measure_cat == "total", "all pregnancies booked", measure_cat)
   )
 
-# remove gestation breakdowns for Island Boards
+# remove gestation breakdowns for Island Boards and financial/calendar year values as they aren't used
 
 bookings <- bookings %>%
   mutate(measure_value = 
            if_else(hbname %in% island_boards &
                      measure_cat != "all pregnancies booked", NA, measure_value)) %>% 
-  filter(!is.na(measure_value))
+  filter(!is.na(measure_value) & !period %in% c("CY", "FY")
+         )
 
-terminations <- # calculate all categories but only use the totals until disclosure ready
+terminations <- # function needs all categories but only produces the totals until disclosure ready
   counts(
     dataset = filter(bookings_terminations, dataset == "TERMINATIONS"),
-    variable = gest_grp3,
+    variable = gest_grp3, # not used but needed for function
     tally_var = count,
     suffix = "", # for hovertext
-    measure = "TERMINATIONS",
-    key = NA,
-    key_measure_cat = NA,
-    key_measure_label = NA
+    measure = "TERMINATIONS"
     ) %>% 
   mutate(measure_value = 
            if_else(measure_cat == "total" & measure_value < 5, NA, measure_value), # disclosure control total 
          measure_cat = 
            if_else(measure_cat == "total", "all terminations", measure_cat)
   )
+
+# remove financial/calendar year values as they aren't used
+
+terminations <- terminations %>%
+  filter(!period %in% c("CY", "FY")
+         )
 
 ### 11c - Average gestation at BOOKING/TERMINATION ----
 
@@ -774,14 +734,7 @@ av_gestation <- bookings_terminations %>%
          measure = if_else(dataset == "ABC", 
                              "GESTATION AT BOOKING",
                              "GESTATION AT TERMINATION"),
-         key_measure_ref = if_else(dataset == "ABC",
-                                 "A1",
-                                 "A2"), # for multi-indicator overview
-         key_measure_label = if_else(dataset == "ABC",
-                         "Average gestation at booking",
-                         "Average gestation at termination*"),
-         suffix = " weeks",
-         key_measure_cat = TRUE) %>%  # for multi-indicator overview
+         suffix = " weeks") %>% 
   filter(period != "Q")
 
 # mark "special" FV and TAY months - these need additional medians, shifts and trends
@@ -820,12 +773,8 @@ everything_dataframe <- bind_rows(inductions,
                                   type_of_birth,
                                   gestation,
                                   bookings,
-                                  # disclosure controls needed for further breakdown
-                                  filter(terminations,
-                                         measure_cat == "all terminations"), # & 
-                                  #          hbname != "NHS Orkney, NHS Shetland and NHS Western Isles"),
+                                  terminations,
                                   av_gestation) %>% 
-                                  #counts) 
   select(-c(rowid, flag)) %>% 
   filter(hbname != "Unknown")
 
@@ -868,10 +817,10 @@ x_date_labels_Q2 <-
 annual_dataframe <- filter(everything_dataframe,
                            period %in% c("CY", "FY") &
                              date %in% factor_labels_year &
-                             key_measure_cat == TRUE) %>% 
+                             shown_on_MIO == "Y") %>% 
   janitor::remove_empty(., which = c("cols"), quiet = TRUE) %>%
-  arrange(dataset, hbtype, key_measure_ref, period, hbname, date) %>% 
-  group_by(key_measure_ref, measure, period, hbtype, date) %>% 
+  arrange(hbtype, hbname, MIO_measure_ref, period, date) %>% 
+  group_by(MIO_measure_ref, measure, period, hbtype, date) %>% 
   mutate(measure_value = round(measure_value, 3),
          MIN = min(measure_value, na.rm = TRUE),
          MAX = max(measure_value, na.rm = TRUE),
@@ -879,12 +828,12 @@ annual_dataframe <- filter(everything_dataframe,
          RESCALED = round((measure_value - MIN) / RANGE, 2), # to stretch across entire x axis
          MIN_RS = min(RESCALED, na.rm = TRUE),
          MAX_RS = max(RESCALED, na.rm = TRUE),
-         plotlylabel = sapply(key_measure_label, # wraps label text
+         plotlylabel = sapply(MIO_measure_label, # wraps label text
                               FUN = function(x) {
                                 paste(strwrap(x, width = 50), collapse = "<br>")})) %>%
   ungroup() %>% 
-  select(c(dataset, hbtype, hbname, period, date, measure, measure_cat, num, den, measure_value, suffix,
-           key_measure_ref, key_measure_label, MIN, MAX, RANGE, RESCALED, MIN_RS, MAX_RS,
+  select(c(dataset, measure, hbtype, hbname, period, date, measure_cat, num, den, measure_value, suffix,
+           MIO_measure_ref, MIO_measure_label, MIN, MAX, RANGE, RESCALED, MIN_RS, MAX_RS,
            plotlylabel)
          )
 
@@ -896,9 +845,9 @@ remaining_dataframe <- filter(everything_dataframe,
                            period %in% c("Q", "M")) %>% 
   mutate(date = ymd(date)) %>%
   select("dataset", "hbtype", "hbname", "pre_pan", "pre_pan_date", "period", "date", 
-  "measure", "measure_cat", "num", "den", "measure_value","suffix",
-  "num_description", "den_description", "measure_value_description", "key_measure_label",
-  "key_measure_ref", "new_median") %>% 
+  "measure", "measure_cat", "num", "den", "measure_value", "suffix",
+  "num_description", "den_description", "measure_value_description", "plotted_on_charts",
+  "shown_on_MIO", "MIO_measure_label", "MIO_measure_ref", "new_median") %>% 
   ungroup()
 
 # remove incomplete quarter data
@@ -910,7 +859,8 @@ remaining_dataframe <- remaining_dataframe %>%
 
 ### 12d - Create run chart data frame ----
 
-runchart_dataframe <- filter(remaining_dataframe, measure_cat %in% runchart_categories)
+runchart_dataframe <- filter(remaining_dataframe, measure_cat %in% runchart_categories) %>% 
+  select(-c("num_description", "den_description", "measure_value_description", "plotted_on_charts", contains("MIO")))
 
 ### i - MEDIAN of measure ----
 
@@ -946,7 +896,8 @@ runchart_dataframe <- runchart_dataframe %>%
 # save off the median information to add to the download dataset created below
 
 medians <- select(runchart_dataframe,
-                  c(dataset:measure_cat, median:new_extended))
+                  c(dataset:measure_cat, median, extended, new_median, new_extended)) %>% 
+  mutate(across(c(median:new_extended), ~ round(., 3)))
 
 ### ii - Mark SHIFTS and TRENDS ----
 
@@ -997,16 +948,14 @@ runchart_dataframe <- runchart_dataframe %>%
   select(c(dataset:hbname, period:measure_value, median, extended, new_median,
            new_extended, suffix, trend, shift,
            ends_with(c("num_rows", "dup_row")))
-         )%>% 
-  mutate(quarter_label = qtr(ymd(date), format = "short"),
+         ) %>% 
+  mutate(quarter_label = if_else(period == "Q",
+                                 qtr(ymd(date), format = "short"),
+                                 NA),
          quarter_label = factor(quarter_label,
                                 levels = x_date_labels_Q2,
                                 ordered = TRUE),
-         measure_value = round(measure_value, 3),
-         median = round(median, 3),
-         extended = round(extended, 3),
-         new_median = round(new_median, 3),
-         new_extended = round(new_extended, 3),
+         across(c(measure_value:new_extended, trend, shift), ~ round(., 3)),
          num = if_else(measure %in% c("BOOKINGS", "TERMINATIONS"), NA, num)
   ) %>%
   ungroup()
@@ -1017,15 +966,16 @@ saveRDS(runchart_dataframe, paste0(data_path, "/", "runchart_dataframe.rds"))
 
 download_dataframe <- left_join(
   select(remaining_dataframe,
-         - c("pre_pan", "pre_pan_date", "new_median")),
+         - c("pre_pan", "pre_pan_date")),
   medians) %>%  # copy median etc to grouped records
-  mutate(measure_value = round(measure_value, 3),
-         key_measure_label = if_else(key_measure_label == "Average gestation at termination*",
-                                       "Average gestation at termination",
-                                       key_measure_label)
+  mutate(date_label = 
+           if_else(period == "Q",
+                   qtr(ymd(date), format = "short"),
+                   format(date, "%b %Y")),
+         measure_value = round(measure_value, 3),
+         MIO_measure_label = str_remove(MIO_measure_label, "[*+]")
          ) %>% 
-  select(dataset:measure_value, median:new_extended, suffix, contains("description"), 
-         key_measure_label)
+  select(dataset, measure, hbtype, hbname, period, date, date_label, measure_cat, num, den, measure_value,  suffix, plotted_on_charts, median, extended, new_median, new_extended, shown_on_MIO, MIO_measure_label, contains("description"))
 
 download_dataframe <- download_dataframe %>% 
   split(.$measure) 
@@ -1037,6 +987,25 @@ for (i in seq_along(download_dataframe)) {
   download_dataframe[[i]] <- 
     janitor::remove_empty(download_dataframe[[i]], which = c("cols"), quiet = TRUE)
 }
+
+# sort GESTATION AT BIRTH in ascending measure_cat order
+
+download_dataframe[["GESTATION AT BIRTH"]]$measure_cat <-
+  factor(download_dataframe[["GESTATION AT BIRTH"]]$measure_cat,
+         levels = c("under 32 weeks",
+                    "between 32 and 36 weeks",
+                    "under 37 weeks",
+                    "between 37 and 41 weeks",
+                    #"between 37 and 42 weeks",
+                    "42 weeks and over",
+                    "between 18 and 44 weeks",
+                    "unknown gestation",
+                    "total")
+  )
+
+download_dataframe[["GESTATION AT BIRTH"]] <-
+  arrange(download_dataframe[["GESTATION AT BIRTH"]],
+          dataset, measure, hbtype, hbname, period, date, date_label, measure_cat)
 
 ### 13 - Save data for SPBAND ----
 
