@@ -155,7 +155,10 @@ names(nice_download) <- janitor::make_clean_names(names(download_dataframe2))
 write_to_excel <- function(index) {
   typeof(names(nice_download)[index])
   
-  rownum <- ifelse(first(nice_download[[index]]$Measure) == "Third- and fourth-degree perineal tears", 8, 7)
+  rownum <- ifelse(
+    first(nice_download[[index]]$Measure) %in% c("Third- and fourth-degree perineal tears", 
+                                                 "Gestation at booking"),
+    8, 7)
 
 # load in the correct template
   
@@ -225,7 +228,7 @@ write_to_excel <- function(index) {
 
 # run this function on all indicators
 
-walk(1:length(download_dataframe2), write_to_excel)
+walk(1:length(nice_download), write_to_excel)
 
 # End of Script ----
                             
