@@ -22,9 +22,13 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 
 # Read in the data to be reformatted
 
-load(paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations.RData"))
+download_dataframe <- readRDS(
+  paste0(data_path, "/download_dataframe.rds"))
 
-download_dataframe2 <- list_assign(download_dataframe,
+annual_dataframe <- readRDS(
+  paste0(data_path, "/annual_dataframe.rds"))
+
+download_dataframe <- list_assign(download_dataframe,
                                    "STILLBIRTHS AND INFANT DEATHS" = readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds")),
                                    "EXTREMELY PRETERM" = readRDS(paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")),
                                    "MULTI INDICATOR OVERVIEW" = annual_dataframe)
@@ -34,7 +38,7 @@ download_dataframe2 <- list_assign(download_dataframe,
 # this function will change each variable name in the download_dataframe into a presentable form
 
 tidy_data_download <- function(measure_selection) {
-  data <- download_dataframe2[[measure_selection]]
+  data <- download_dataframe[[measure_selection]]
   
   # modify entries in `Board of` and Measure columns
   data <- data %>% 
@@ -147,8 +151,8 @@ tidy_data_download <- function(measure_selection) {
 
 # run the function across all of download_dataframe
 
-map(names(download_dataframe2), tidy_data_download) -> nice_download
-names(nice_download) <- janitor::make_clean_names(names(download_dataframe2))
+map(names(download_dataframe), tidy_data_download) -> nice_download
+names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
 
 # function to take each dataset and write it into the correct template
 
@@ -217,7 +221,7 @@ write_to_excel <- function(index) {
 # save the workbook as an xlsx spreadsheet with appropriate title
 
   saveWorkbook(wb,
-               paste0(dashboard_dataframes_folder, "/",
+               paste0(excel_downloads_folder, "/",
                       names(nice_download)[index],
                       "_" ,
                       refresh_date, ".xlsx"),
@@ -228,7 +232,28 @@ write_to_excel <- function(index) {
 
 # run this function on all indicators
 
-walk(1:length(nice_download), write_to_excel)
+walk(1:length(download_dataframe), write_to_excel)
+
+# save outputs into a zipped file ready for copying to the dashboard folder
+
+zipfile <- "Excel-downloads.zip"
+
+files2zip <- dir(excel_downloads_folder, full.names = FALSE)
+
+zip::zip(zipfile,
+    files = files2zip,
+    include_directories = FALSE,
+    root = excel_downloads_folder)
+
+# once the content of the Excel downloads has been checked run this:
+
+# moves zip file to dashboard_dataframes folder and deletes excel_downloads folder
+
+file.rename(from = paste0(excel_downloads_folder, "/Excel-downloads.zip"),
+            to = paste0(dashboard_dataframes_folder, "/Excel-downloads.zip")
+)
+
+unlink(excel_downloads_folder, recursive = TRUE)
 
 # End of Script ----
                             

@@ -3,10 +3,9 @@
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Bev Dodds
 # 12 July 2023
-# Last update: 12 December 2023
+# Last update: 20 February 2024
 # Last update by: Bev Dodds
-# Latest update description:Tweaked code to keep input data separate; also added home birth code to 
-# extremely pre-term R code
+# Latest update description: Amended downloads to be separate Excel files built from templates
 # Type of script - preparation
 # Written/run on Posit Workbench
 # Version of R - 4.1.2
@@ -31,7 +30,7 @@ source("code/functions.R")
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2024-01-25") # change this each time the data is updated
+refresh_date <- as.Date("2024-02-20") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
@@ -92,6 +91,16 @@ if (!dir.exists(dashboard_dataframes_folder)) {
 # map the Excel templates folder (for accessible downloads)
 
 excel_templates_folder <- "../basefiles/excel templates/"
+
+# create the Excel downloads folder
+
+excel_downloads_folder <- paste0(dashboard_dataframes_folder, "/excel downloads")
+
+# create this folder if it doesn't already exist
+
+if (!dir.exists(excel_downloads_folder)) {
+  dir.create(excel_downloads_folder, showWarnings = TRUE, recursive = TRUE, mode = "2770")
+}
 
 # sets colour palette to the PHS colour scheme
 

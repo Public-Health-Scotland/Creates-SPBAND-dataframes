@@ -4,9 +4,9 @@
 # Pregnancies booked, Average gestation at booking, Terminations, Average gestation at termination
 # Sourced from the Maternity Team's SMR02 data file, the ABC base file and the Terminations data file
 # Bev Dodds
-# 12 December 2023
-# Last update by Bev Dodds
-# Latest update description: updated link to hbcipher file
+# Last update: 20 February 2024
+# Last update by: Bev Dodds
+# Latest update description: Amended downloads to be separate Excel files built from templates
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.1.2 - note use of dplyr 1.1.0
@@ -29,7 +29,7 @@ factor_labels_year <- c("2022", "2021", "2020", "2019", "2018", "2017",
 
 # create a vector containing "measure_cat" that will have a timeseries or runchart
 
-runchart_categories <- c("induced", "low apgar5 scores", "3rd or 4th degree tears",
+runchart_categories <- c("induced", "low (<7) apgar5 scores", "3rd or 4th degree tears",
                           "spontaneous vaginal births", "assisted births",
                           "all caesarean births", "planned caesarean births",
                           "unplanned caesarean births", "under 32 weeks",
@@ -446,7 +446,7 @@ births$new_induced <-
                                 levels = c(1, 2, 9),
                                 labels = c("not induced",
                                            "induced",
-                                           "unknown if induced")
+                                           "unknown whether induced")
                                 )
 
 # flag apgar 0-6, apgar 7-10, known apgar, unknown apgar in NEWAPGAR
@@ -1007,10 +1007,12 @@ download_dataframe[["GESTATION AT BIRTH"]] <-
   arrange(download_dataframe[["GESTATION AT BIRTH"]],
           dataset, measure, hbtype, hbname, period, date, date_label, measure_cat)
 
+saveRDS(download_dataframe, paste0(data_path, "/", "download_dataframe.rds"))
+
 ### 13 - Save data for SPBAND ----
 
 save(annual_dataframe, 
-     download_dataframe,
+     #download_dataframe,
      runchart_dataframe,
      factor_labels_year,
   file = paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations.RData")
