@@ -159,7 +159,10 @@ names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
 write_to_excel <- function(index) {
   typeof(names(nice_download)[index])
   
-  rownum <- ifelse(first(nice_download[[index]]$Measure) == "Third- and fourth-degree perineal tears", 8, 7)
+  rownum <- ifelse(
+    first(nice_download[[index]]$Measure) %in% c("Third- and fourth-degree perineal tears", 
+                                                 "Gestation at booking"),
+    8, 7)
 
 # load in the correct template
   
