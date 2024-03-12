@@ -4,9 +4,9 @@
 # Pregnancies booked, Average gestation at booking, Terminations, Average gestation at termination
 # Sourced from the Maternity Team's SMR02 data file, the ABC base file and the Terminations data file
 # Bev Dodds
-# Last update: 20 February 2024
+# Last update: 28 February 2024
 # Last update by: Bev Dodds
-# Latest update description: Amended downloads to be separate Excel files built from templates
+# Latest update description: Fixed Forth Valley and Tayside Gestation at Booking - new medians were calculated incorrectly and "new median" shifts were not being picked up 
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.1.2 - note use of dplyr 1.1.0
@@ -29,7 +29,7 @@ factor_labels_year <- c("2022", "2021", "2020", "2019", "2018", "2017",
 
 # create a vector containing "measure_cat" that will have a timeseries or runchart
 
-runchart_categories <- c("induced", "low (<7) apgar5 scores", "3rd or 4th degree tears",
+runchart_categories <- c("induced", "low (<7) apgar5 score", "3rd or 4th degree tears",
                           "spontaneous vaginal births", "assisted births",
                           "all caesarean births", "planned caesarean births",
                           "unplanned caesarean births", "under 32 weeks",
@@ -44,7 +44,7 @@ island_boards <- c("NHS Orkney", "NHS Western Isles", "NHS Shetland")
 # read in HBNAME cipher names (for HBNAME of Treatment) in WI dashboard format,
 # also for HBNAME labels
 
-hbcipher <- read.csv("../basefiles/hb14_hb19.csv", stringsAsFactors=FALSE) %>% 
+hbcipher <- read.csv("../basefiles/hb14_hb19.csv", stringsAsFactors = FALSE) %>% 
   filter(is.na(HBDateArchived)) %>% # want the latest NHS Board codes
   select(HBCIPHER, HBCODE, HBNAME, HBLABEL)
 
@@ -742,9 +742,9 @@ av_gestation <- bookings_terminations %>%
 av_gestation <- av_gestation %>% 
   mutate(flag = if_else(measure == "GESTATION AT BOOKING" & period == "M" & # flags special months (FV/TAY)
                           ((hbname == "NHS Forth Valley" &
-                              date >= "2021-03-01" & date <= "2021-07-12") |
+                              date >= "2021-03-01" & date <= "2022-02-01") | # 12 months
                              (hbname == "NHS Tayside" &
-                                date >= "2020-08-03" & date <= "2020-12-21")),
+                                date >= "2020-08-01" & date <= "2021-07-01")), # 12 months
                         1, 0)
   ) %>% 
   tibble::rowid_to_column()
@@ -761,7 +761,8 @@ add_medians <-
 # match new_median values onto main average gestation file
 
 av_gestation <-
-  left_join(av_gestation, add_medians, by = "rowid")
+  left_join(av_gestation, add_medians, by = "rowid") %>% 
+   select(- c(rowid, flag))
 
 ### 12 - Create data frames to be used in SPBAND ----
 
@@ -775,7 +776,6 @@ everything_dataframe <- bind_rows(inductions,
                                   bookings,
                                   terminations,
                                   av_gestation) %>% 
-  select(-c(rowid, flag)) %>% 
   filter(hbname != "Unknown")
 
 # add on the num, den, measure_value metadata for the data download
@@ -850,27 +850,28 @@ remaining_dataframe <- filter(everything_dataframe,
   "shown_on_MIO", "MIO_measure_label", "MIO_measure_ref", "new_median") %>% 
   ungroup()
 
-# remove incomplete quarter data
+# drop incomplete quarter data
 
 remaining_dataframe <- remaining_dataframe %>% 
-  mutate(flag = period == "Q" & date > cut_off_date_Qtrly) %>% 
-  filter(flag == FALSE) %>% 
-  select(- flag)
+  mutate(drop = period == "Q" & date > cut_off_date_Qtrly) %>% 
+  filter(drop == FALSE) %>% 
+  select(- drop)
 
 ### 12d - Create run chart data frame ----
 
 runchart_dataframe <- filter(remaining_dataframe, measure_cat %in% runchart_categories) %>% 
-  select(-c("num_description", "den_description", "measure_value_description", "plotted_on_charts", contains("MIO")))
+  select(- c("num_description", "den_description", "measure_value_description", "plotted_on_charts", contains("MIO")))
 
 ### i - MEDIAN of measure ----
 
-# for pre-pandemic period, by HB, calculate MEDIAN - plotted as solid blue line 
+# for pre-pandemic period, by HB, calculate MEDIAN - plotted as solid blue line and EXTENDED (dotted blue line)
 
 runchart_dataframe <- calculate_medians(dataset = runchart_dataframe,
                                         measure_value = measure_value)
 
-# update median with new_median for "special" cases (GESTATION AT BOOKING)
-# update extended (median) - plotted as dotted blue line
+# overwrite median with new_median for "special" cases (GESTATION AT BOOKING)
+# overwrite extended (median) with these values
+# ready to calculate shifts and trends
 
 runchart_dataframe <- runchart_dataframe %>% 
   mutate(median = if_else(!is.na(new_median), new_median, median),
@@ -879,27 +880,18 @@ runchart_dataframe <- runchart_dataframe %>%
 # for Gestation at booking Tayside and Forth Valley:
 
 # calculate new_extended (median) (equals new_median) and fill down - plotted as dotted green line
-# reset median to NA where new_median has a value
-# reset extended to NA where new_extended has a value
-# [reset new_extended to NA where there is a value for new_median - stops overplotting]
-# [reset extended to NA where there is a value for median or new_extended - stops overplotting]
+# calculate flag which determines where "new median" is used to calculate "new" shifts
 
 runchart_dataframe <- runchart_dataframe %>% 
   mutate(
     new_extended = new_median,
     new_extended = na.locf(new_extended, na.rm = FALSE),
-    median = if_else(!is.na(new_median), NA_real_, median),
-    extended = if_else(!is.na(new_extended), NA_real_, extended))
-
-#if_else(!is.na(median) | !is.na(new_extended), NA_real_, extended))
-
-# save off the median information to add to the download dataset created below
-
-medians <- select(runchart_dataframe,
-                  c(dataset:measure_cat, median, extended, new_median, new_extended)) %>% 
-  mutate(across(c(median:new_extended), ~ round(., 3)))
+    flag = if_else(!is.na(new_extended), 1, 0))  # use flag to split shifts by median
 
 ### ii - Mark SHIFTS and TRENDS ----
+
+# compares measure_value with extended to determine shifts
+# compares consecutive measure_values to determine trends
 
 runchart_dataframe <- runchart_flags(
   dataset = runchart_dataframe,
@@ -908,22 +900,33 @@ runchart_dataframe <- runchart_flags(
   value = measure_value,
   median = extended)
 
+# revert median and extended to NA where flag = 1
+
+runchart_dataframe <- runchart_dataframe %>% 
+  mutate(median = if_else(flag == 0, median, NA),
+         extended = na.locf(median, na.rm = FALSE))
+
+# save off the median information to add to the download dataset created below
+
+medians <- runchart_dataframe %>% 
+  ungroup(flag) %>% 
+  select(.,
+         c(dataset:measure_cat, median, extended, new_median, new_extended)) %>% 
+  mutate(across(c(median:new_extended), ~ round(., 2)))
+
 # Set up data for "trend" and "shift" traces
 # We don't want to use this data to plot anything that is not part of a
 # trend or shift, so just set FALSE-flagged data to NA
 
 runchart_dataframe <- runchart_dataframe %>% 
   mutate(
-    #remove_shifts_and_trends = measure %in% c("BOOKINGS", "TERMINATIONS"), # not applicable
     trend = 
-      if_else(orig_trend == TRUE, # & 
-                #remove_shifts_and_trends == FALSE,
-              measure_value, NA),
+      if_else(orig_trend == TRUE, 
+              measure_value, NA), # copies measure_value to plot as trend
     shift =
-      if_else(orig_shift == TRUE, # &
-                #remove_shifts_and_trends == FALSE,
-              measure_value, NA)
-  )
+      if_else(orig_shift == TRUE,
+              measure_value, NA) # copies measure_value to plot as shift
+    )
 
 # split adjacent shifts and trends that should not be connected
 
@@ -931,7 +934,6 @@ runchart_dataframe <- add_split_gaps(
   dataset = runchart_dataframe,
   measure = "trend",
   split_col_prefix = "orig_trend") %>% 
-  #select(- c("num_rows", "dup_row"))
   rename(., c("trend_num_rows" = "num_rows", "trend_dup_row" = "dup_row"))
 
 runchart_dataframe <- add_split_gaps(
@@ -945,6 +947,7 @@ runchart_dataframe <- add_split_gaps(
 # add quarter_label and round values
 
 runchart_dataframe <- runchart_dataframe %>%
+  ungroup(flag) %>% 
   select(c(dataset:hbname, period:measure_value, median, extended, new_median,
            new_extended, suffix, trend, shift,
            ends_with(c("num_rows", "dup_row")))
@@ -966,7 +969,7 @@ saveRDS(runchart_dataframe, paste0(data_path, "/", "runchart_dataframe.rds"))
 
 download_dataframe <- left_join(
   select(remaining_dataframe,
-         - c("pre_pan", "pre_pan_date")),
+         - c("pre_pan", "pre_pan_date", "new_median")),
   medians) %>%  # copy median etc to grouped records
   mutate(date_label = 
            if_else(period == "Q",

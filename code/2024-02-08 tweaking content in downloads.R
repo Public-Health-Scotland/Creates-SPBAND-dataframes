@@ -14,31 +14,13 @@
 
 ### 1 - Housekeeping ----
 
+rm(list = ls())
+
 # Import the common housekeeping code - this MUST be updated BEFORE this code is run
 
-source("code/1 - Housekeeping code to be updated each refresh.R")
+source("code/1 - Housekeeping code to be updated each refresh.R") # ensure refresh_date = 2023-12-15
 
-refresh_date <- as.Date("2024-02-20") # change this each time the data is updated
-
-# set local output folder for data - dated automatically
-
-data_path <- paste0("./data/", refresh_date, " extract")
-
-# create this folder if it doesn't already exist
-
-if (!dir.exists(data_path)) {
-  dir.create(data_path, showWarnings = TRUE, recursive = TRUE, mode = "2770")
-}
-
-# create the dashboard_dataframes folder
-
-dashboard_dataframes_folder <- paste0(data_path, "/dashboard_dataframes")
-
-# create this folder if it doesn't already exist
-
-if (!dir.exists(dashboard_dataframes_folder)) {
-  dir.create(dashboard_dataframes_folder, showWarnings = TRUE, recursive = TRUE, mode = "2770")
-}
+print(refresh_date) # check!
 
 metadata <- read.xlsx("data/measure metadata_old.xlsx", sheet = 1) 
 
@@ -63,7 +45,7 @@ runchart_categories <- c("induced", "low (<7) apgar5 scores", "3rd or 4th degree
 
 island_boards <- c("NHS Orkney", "NHS Western Isles", "NHS Shetland")
 
-### 2 - Read in data to be amended ----
+### 2 - Read in 15 Dec 24 "published" data to be amended ----
 
 load("data/2023-12-15 extract/dashboard_dataframes/SMR02-ABC-Terminations-revised.RData")
 
@@ -87,7 +69,7 @@ published_Jan_24_annual_dataframe <-
                                 paste(strwrap(x, width = 50), collapse = "<br>")})
          )
 
-saveRDS(published_Jan_24_annual_dataframe, paste0(data_path, "/", "annual_dataframe.rds"))
+saveRDS(published_Jan_24_annual_dataframe, paste0(data_path, "/", "annual_dataframe-2024-02-08.rds"))
 
 ### 2b - runchart data frame ----
 
@@ -96,7 +78,7 @@ published_Jan_24_runchart_dataframe <- runchart_dataframe %>%
     measure_cat == "low apgar5 scores", "low (<7) apgar5 score", measure_cat)
   )
 
-saveRDS(published_Jan_24_runchart_dataframe, paste0(data_path, "/", "runchart_dataframe.rds"))
+saveRDS(published_Jan_24_runchart_dataframe, paste0(data_path, "/", "runchart_dataframe-2024-02-08.rds"))
 
 ### 2c - download data frame ----
 
@@ -146,19 +128,19 @@ for (i in c(1, 3, 6, 7, 9)) {
   select(dataset:extended, measure_value_description, suffix, key_measure_label, num, den, num_description, den_description)
 }
 
-saveRDS(published_Jan_24_download_dataframe, paste0(data_path, "/", "download_dataframe.rds"))
+saveRDS(published_Jan_24_download_dataframe, paste0(data_path, "/", "download_dataframe-2024-02-08.rds"))
 
 ### 3 - Save data for SPBAND ----
 
-annual_dataframe <- readRDS(paste0(data_path, "/", "annual_dataframe.rds"))
-download_dataframe <- readRDS(paste0(data_path, "/", "download_dataframe.rds"))
-runchart_dataframe <- readRDS(paste0(data_path, "/", "runchart_dataframe.rds"))
+annual_dataframe <- readRDS(paste0(data_path, "/", "annual_dataframe-2024-02-08.rds"))
+download_dataframe <- readRDS(paste0(data_path, "/", "download_dataframe-2024-02-08.rds"))
+runchart_dataframe <- readRDS(paste0(data_path, "/", "runchart_dataframe-2024-02-08.rds"))
 
 save(annual_dataframe, 
      download_dataframe,
      runchart_dataframe,
      factor_labels_year,
-  file = paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations.RData")
+  file = paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations-tweaked-2024-02-08.RData")
 )
 
 # once the data has been checked in the PRA dashboard it should be copied to the SPBAND data folder 
