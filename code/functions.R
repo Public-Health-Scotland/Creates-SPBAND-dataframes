@@ -192,11 +192,11 @@ calculate_medians <- function(dataset, measure_value){
     mutate(median =
              unique(if_else(pre_pan == TRUE,
                             median({{measure_value}}, na.rm = TRUE), 
-                            NA_real_))) %>% # median of measure_value
+                            NA_real_))) %>% # median of measure_value - solid blue line
     group_by(dataset, hbtype, hbname, period, measure, measure_cat) %>%
     arrange(pre_pan_date, .by_group = TRUE) %>%
     mutate(extended = median,
-           extended = na.locf(extended, na.rm = FALSE))
+           extended = na.locf(extended, na.rm = FALSE)) # extended is the same as median - dotted blue line
   
   return(data)
   
@@ -213,80 +213,91 @@ runchart_flags <- function(dataset, shift, trend, value, median) {
   
   dataset <- dataset %>%
     mutate(
-      shift_i = tidytable::case_when(
-        ({{value}} > {{median}} & lag({{value}}, 1) > {{median}} &
-           lag({{value}}, 2) > {{median}} & lag({{value}}, 3) > {{median}} &
-           lag({{value}}, 4) > {{median}} & lag({{value}}, 5) > {{median}})
-        | ({{value}} < {{median}} & lag({{value}}, 1) < {{median}} &
-             lag({{value}}, 2) < {{median}} & lag({{value}}, 3) < {{median}} &
-             lag({{value}}, 4) < {{median}} & lag({{value}}, 5) < {{median}}) ~ TRUE,
-        TRUE ~ FALSE),
-      
-      shift = tidytable::case_when(
-        shift_i == TRUE | lead(shift_i, 1) == TRUE | lead(shift_i, 2) == TRUE
-        | lead(shift_i, 3) == TRUE | lead(shift_i, 4) == TRUE
-        | lead(shift_i, 5) == TRUE  ~ TRUE,
-        TRUE ~ FALSE),
-      
       trend_i = tidytable::case_when(
         ({{value}} > lag({{value}}, 1) & lag({{value}}, 1) > lag({{value}}, 2)
          & lag({{value}}, 2) > lag({{value}}, 3)  & lag({{value}}, 3) > lag({{value}}, 4)) |
           ({{value}} < lag({{value}}, 1) & lag({{value}}, 1) < lag({{value}}, 2)
            & lag({{value}}, 2) < lag({{value}}, 3)  & lag({{value}}, 3) < lag({{value}}, 4)) ~ TRUE,
         TRUE ~ FALSE),
-      
+
       trend = tidytable::case_when(
         trend_i == TRUE | lead(trend_i, 1) == TRUE | lead(trend_i, 2) == TRUE
         | lead(trend_i, 3) == TRUE | lead(trend_i, 4) == TRUE ~ TRUE,
         TRUE ~ FALSE)
-      ) %>%
-    
-    rename({{shift}}:=shift,{{trend}}:=trend) %>%
-    select(-shift_i, -trend_i)
+    ) %>%
 
-# Two trends can sometimes run into each other. This can be problematic when
-# they are plotted using lines.
-#
-# Two adjacent trends where one point is in both trends is fine (think data
-# like \/) - the trend line should not be interrupted. But when the last point
-# in one trend is adjacent to the first point in the next (think \|\) we don't
-# want to connect both trend lines together.
-#
-# This code adds a column to the data that identifies the problematic cases,
-# so the lines can be split in the plotting function.
-#
-# Problematic points are surrounded by other trend points and are in a section
-# where the gradient changes sign twice in succession.
+    rename({{trend}}:=trend) %>%
+    select(- trend_i)
   
-dataset <-
-  dataset %>%
+  # Two trends can sometimes run into each other. This can be problematic when
+  # they are plotted using lines.
+  #
+  # Two adjacent trends where one point is in both trends is fine (think data
+  # like \/) - the trend line should not be interrupted. But when the last point
+  # in one trend is adjacent to the first point in the next (think \|\) we don't
+  # want to connect both trend lines together.
+  #
+  # This code adds a column to the data that identifies the problematic cases,
+  # so the lines can be split in the plotting function.
+  #
+  # Problematic points are surrounded by other trend points and are in a section
+  # where the gradient changes sign twice in succession.
+  
+  dataset <-
+    dataset %>%
 
-  # For identifying two successive changes in gradient direction
+    # For identifying two successive changes in gradient direction
 
-  mutate(gradient = sign({{value}} - lag({{value}})),
-         gradient_lag_change = lag(gradient) != gradient,
-         gradient_lead_change = lead(gradient) != gradient
-         ) %>%
+    mutate(gradient = sign({{value}} - lag({{value}})),
+           gradient_lag_change = lag(gradient) != gradient,
+           gradient_lead_change = lead(gradient) != gradient
+    ) %>%
 
-  # Need these to find whether point is in the middle of a trend
+    # Need these to find whether point is in the middle of a trend
 
-  mutate(across(all_of(trend), ~lag(.x), .names = "trend_lag"),
-         across(all_of(trend), ~lead(.x), .names = "trend_lead")
-         ) %>%
+    mutate(across(all_of(trend), ~lag(.x), .names = "trend_lag"),
+           across(all_of(trend), ~lead(.x), .names = "trend_lead")
+    ) %>%
 
-  # Set new column to TRUE when all conditions are met
+    # Set new column to TRUE when all conditions are met
 
-  mutate("{trend}.split" :=
-           if_else(gradient_lag_change + gradient_lead_change +
-                     .data[[trend]] + trend_lag + trend_lead == 5,
-                   TRUE, FALSE, missing = FALSE)
-         ) %>%
+    mutate("{trend}.split" :=
+             if_else(gradient_lag_change + gradient_lead_change +
+                       .data[[trend]] + trend_lag + trend_lead == 5,
+                     TRUE, FALSE, missing = FALSE)
+    ) %>%
 
-  # Remove columns that are no longer needed
+    # Remove columns that are no longer needed
 
-  select(- all_of(c("gradient", "gradient_lag_change", "gradient_lead_change",
-                   "trend_lag", "trend_lead"))
-         )
+    select(- all_of(c("gradient", "gradient_lag_change", "gradient_lead_change",
+                      "trend_lag", "trend_lead"))
+    )
+   
+# # Now calculate shifts (ensuring split medians, noted by flag, are taken into account)
+
+  dataset <-
+    dataset %>%
+    group_by(flag, .add = TRUE) %>%
+
+    mutate(
+      shift_i = tidytable::case_when(
+        (({{value}} > {{median}} & lag({{value}}, 1) > {{median}} &
+            lag({{value}}, 2) > {{median}} & lag({{value}}, 3) > {{median}} &
+            lag({{value}}, 4) > {{median}} & lag({{value}}, 5) > {{median}})
+         | ({{value}} < {{median}} & lag({{value}}, 1) < {{median}} &
+              lag({{value}}, 2) < {{median}} & lag({{value}}, 3) < {{median}} &
+              lag({{value}}, 4) < {{median}} & lag({{value}}, 5) < {{median}})) ~ TRUE,
+        TRUE ~ FALSE),
+
+      shift = tidytable::case_when(
+        shift_i == TRUE | lead(shift_i, 1) == TRUE | lead(shift_i, 2) == TRUE
+        | lead(shift_i, 3) == TRUE | lead(shift_i, 4) == TRUE
+        | lead(shift_i, 5) == TRUE  ~ TRUE,
+        TRUE ~ FALSE)
+    ) %>%
+
+    rename({{shift}}:=shift) %>%
+    select(- shift_i)
 
 # There is a similar issue for shifts. There can't be one point in two shifts,
 # but the last point in one can be adjacent to the first point in the next.
@@ -294,35 +305,35 @@ dataset <-
 #
 # Problematic points are surrounded by other shift points and are on the
 # opposite side of the median from the preceding point.
-  
-dataset <-
-  dataset %>%
 
-  # Find whether sign has changed from preceding point
+  dataset <-
+    dataset %>%
 
-  mutate(median_diff_sign = sign({{value}} - {{median}}),
-         sign_change = median_diff_sign != lag(median_diff_sign)
-  ) %>%
+    # Find whether sign has changed from preceding point
 
-  # Need these to find whether point is in the middle of a shift
+    mutate(median_diff_sign = sign({{value}} - {{median}}),
+           sign_change = median_diff_sign != lag(median_diff_sign)
+    ) %>%
 
-  mutate(across(all_of(shift), ~lag(.x), .names = "shift_lag"),
-         across(all_of(shift), ~lead(.x), .names = "shift_lead")
-  ) %>%
+    # Need these to find whether point is in the middle of a shift
 
-  # Set new column to TRUE when all conditions are met
+    mutate(across(all_of(shift), ~lag(.x), .names = "shift_lag"),
+           across(all_of(shift), ~lead(.x), .names = "shift_lead")
+    ) %>%
 
-  mutate("{shift}.split" :=
-           if_else(sign_change + .data[[shift]] +
-                     shift_lag + shift_lead == 4,
-                   TRUE, FALSE, missing = FALSE)
-  ) %>%
+    # Set new column to TRUE when all conditions are met
 
-  # Remove columns that are no longer needed
+    mutate("{shift}.split" :=
+             if_else(sign_change + .data[[shift]] +
+                       shift_lag + shift_lead == 4,
+                     TRUE, FALSE, missing = FALSE)
+    ) %>%
 
-  select(- all_of(c("median_diff_sign", "sign_change",
-                    "shift_lag", "shift_lead"))
-  )
+    # Remove columns that are no longer needed
+
+    select(- all_of(c("median_diff_sign", "sign_change",
+                      "shift_lag", "shift_lead"))
+    )
 }
 
 # Function to split adjacent shifts and trends that should not be connected

@@ -1,8 +1,8 @@
 # Code to remove gestation breakdowns from TERMINATIONS download
 
-# load latest SMR02-ABC-TERMINATIONS.RData - loads annual_dataframe, download_dataframe and runchart_dataframe
+# load 15 Dec 2023 published 16 Jan 2024 SMR02-ABC-TERMINATIONS.RData - loads annual_dataframe, download_dataframe and runchart_dataframe
 
-load("./data/2023-12-15 extract/dashboard_dataframes/SMR02-ABC-Terminations.RData")
+load("data/2023-12-15 extract/dashboard_dataframes/SMR02-ABC-Terminations.RData")
 
 # split out latest download data into the separate measure data using the function borrowed from dashboard code
 
@@ -16,7 +16,6 @@ builds_download_data <- function(measure) {
 bookings <- builds_download_data("BOOKINGS")
 av_gestation_booking <- builds_download_data("GESTATION AT BOOKING")
 av_gestation_termination <- builds_download_data("GESTATION AT TERMINATION")
-#av_gestation <- bind_rows(av_gestation, av_gestation2)
 terminations <- builds_download_data("TERMINATIONS")
 inductions <- builds_download_data("INDUCTIONS")
 type_of_birth <- builds_download_data("TYPE OF BIRTH")
@@ -81,7 +80,7 @@ rm(list = ls())
 
 # final check
 
-load("./data/2023-12-15 extract/dashboard_dataframes/SMR02-ABC-Terminations-revised.RData")
+load("data/2023-12-15 extract/dashboard_dataframes/SMR02-ABC-Terminations-revised.RData")
 
 View(download_dataframe)
 
