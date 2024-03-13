@@ -1,3 +1,5 @@
+runchart_dataframe <- readRDS(paste0("../", data_path, "/", "runchart_dataframe.rds"))
+
 HBnames <- unique(runchart_dataframe$hbname)
 Measure_List <- unique(runchart_dataframe$measure)
 
@@ -80,8 +82,7 @@ server <- function(input, output) {
     data <- runchart_dataframe %>%
       filter(hbname == Selected$HBName &
                hbtype == Selected$HBType &
-               measure == Selected$Measure) %>% 
-      arrange(desc(date))
+               measure == Selected$Measure)
       
   if (is.null(data()))
   {

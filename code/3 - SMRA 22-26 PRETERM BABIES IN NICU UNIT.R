@@ -186,7 +186,8 @@ extremely_preterm_data <- left_join(extremely_preterm_data, temp,
                                                  measure, measure_cat, num, den, measure_value)
                                     ) %>%
   select(- sd) %>% 
-  mutate(across(c(measure_value:upper_control_limit), ~ round(., 2))
+  mutate(across(c(centreline:upper_control_limit), ~ round(., 2)),
+         measure_value = round(measure_value, 3)
   )
   
 
