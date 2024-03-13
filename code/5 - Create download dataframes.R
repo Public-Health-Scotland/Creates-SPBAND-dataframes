@@ -75,9 +75,9 @@ tidy_data_download <- function(measure_selection) {
     )
   
   # some indicators are not sub-categorised so we delete sub-cat and key measure columns
-  if (length(unique(data$`Sub-category`)) == 1) {
-    data$`Sub-category` = NULL
-  }
+  # if (length(unique(data$`Sub-category`)) == 1) {
+  #   data$`Sub-category` = NULL
+  # }
   
   # modify names of columns for the datasets where they occur
   

@@ -4,9 +4,9 @@
 # Pregnancies booked, Average gestation at booking, Terminations, Average gestation at termination
 # Sourced from the Maternity Team's SMR02 data file, the ABC base file and the Terminations data file
 # Bev Dodds
-# Last update: 28 February 2024
+# Last update: 12 March 2024
 # Last update by: Bev Dodds
-# Latest update description: Fixed Forth Valley and Tayside Gestation at Booking - new medians were calculated incorrectly and "new median" shifts were not being picked up 
+# Latest update description: Made tweaks to factor descriptions to ensure that metadata is correctly picked up for the Excel downloads 
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.1.2 - note use of dplyr 1.1.0
@@ -30,11 +30,11 @@ factor_labels_year <- c("2022", "2021", "2020", "2019", "2018", "2017",
 # create a vector containing "measure_cat" that will have a timeseries or runchart
 
 runchart_categories <- c("induced", "low (<7) apgar5 score", "3rd or 4th degree tears",
-                          "spontaneous vaginal births", "assisted births",
+                          "spontaneous vaginal births", "assisted vaginal births",
                           "all caesarean births", "planned caesarean births",
                           "unplanned caesarean births", "under 32 weeks",
-                          "between 32 and 36 weeks", "under 37 weeks", "between 37 and 41 weeks",
-                          "42 weeks and over", "between 18 and 44 weeks",
+                          "between 32 and 36 weeks (inclusive)", "under 37 weeks", "between 37 and 41 weeks (inclusive)",
+                          "42 weeks and over (inclusive)", "between 18 and 44 weeks (inclusive)",
                           "all pregnancies booked", "all terminations", "average gestation")
 
 # create a vector of Island Boards to remove them from the outputs if necessary
@@ -312,7 +312,7 @@ rm(analysis_R, analysis_T)
 analysis_M <- filter(analysis_both, dataset != "SMR02") %>% # only need Q for SMR02 measures
   rename(pre_pan = pre_pan_M,
          pre_pan_date = pre_pan_date_M) %>% 
-  select(-c(pre_pan_Q, pre_pan_date_Q)) %>% 
+  select(- c(pre_pan_Q, pre_pan_date_Q)) %>% 
   mutate(period = "M",
          date = as.character(month_beginning))
 
@@ -321,7 +321,7 @@ analysis_M <- filter(analysis_both, dataset != "SMR02") %>% # only need Q for SM
 analysis_Q <- filter(analysis_both, dataset =="SMR02") %>% 
   rename(pre_pan = pre_pan_Q,
          pre_pan_date = pre_pan_date_Q) %>% 
-  select(-c(pre_pan_M, pre_pan_date_M)) %>% 
+  select(- c(pre_pan_M, pre_pan_date_M)) %>% 
   mutate(period = "Q",
          date = as.character(quarter))
 
@@ -395,7 +395,7 @@ births$new_type_of_birth_name <-
   factor(births$new_type_of_birth_name,
                                   levels = c(1, 2, 3, 4, 9),
                                   labels = c("spontaneous vaginal births",
-                                             "assisted births",
+                                             "assisted vaginal births",
                                              "planned caesarean births",
                                              "unplanned caesarean births",
                                              "unknown type of birth")
@@ -536,9 +536,9 @@ births <- births %>%
 births$gest_grp <- 
   factor(births$gest_grp, levels = c(1, 2, 3, 4, 9),
          labels = c("under 32 weeks",
-                    "between 32 and 36 weeks",
-                    "between 37 and 41 weeks",
-                    "42 weeks and over",
+                    "between 32 and 36 weeks (inclusive)",
+                    "between 37 and 41 weeks (inclusive)",
+                    "42 weeks and over (inclusive)",
                     "unknown gestation") 
   )
 
@@ -565,8 +565,8 @@ births <- births %>%
 births$gest_grp2 <-
   factor(births$gest_grp2, levels = c(1, 2, 3, 9), 
          labels = c("under 37 weeks",
-                    "between 37 and 42 weeks",
-                    "over 42 weeks gestation",
+                    "between 37 and 42 weeks (inclusive)",
+                    "over 42 weeks gestation (inclusive)",
                     "other or unknown gestation")
          )
 
@@ -591,8 +591,8 @@ bookings_terminations$gest_grp3 <- factor(
   bookings_terminations$gest_grp3,
   levels = c(1, 2, 3, 9),
   labels = c("under 10 weeks",
-             "between 10 and 12 weeks",
-             "13 weeks and over",
+             "between 10 and 12 weeks (inclusive)",
+             "13 weeks and over (inclusive)",
              "unknown"
              )
   )
@@ -663,7 +663,7 @@ gestation <- rbind(gestation1, gestation2)
 
 gestation <- gestation %>% 
   mutate(measure_cat = 
-           if_else(measure_cat == "total exc. unknown", "between 18 and 44 weeks", measure_cat)
+           if_else(measure_cat == "total exc. unknown", "between 18 and 44 weeks (inclusive)", measure_cat)
   )
 
 apgar5 <-
@@ -821,16 +821,22 @@ annual_dataframe <- filter(everything_dataframe,
   janitor::remove_empty(., which = c("cols"), quiet = TRUE) %>%
   arrange(hbtype, hbname, MIO_measure_ref, period, date) %>% 
   group_by(MIO_measure_ref, measure, period, hbtype, date) %>% 
-  mutate(measure_value = round(measure_value, 3),
-         MIN = min(measure_value, na.rm = TRUE),
-         MAX = max(measure_value, na.rm = TRUE),
-         RANGE = MAX - MIN,
-         RESCALED = round((measure_value - MIN) / RANGE, 2), # to stretch across entire x axis
-         MIN_RS = min(RESCALED, na.rm = TRUE),
-         MAX_RS = max(RESCALED, na.rm = TRUE),
-         plotlylabel = sapply(MIO_measure_label, # wraps label text
-                              FUN = function(x) {
-                                paste(strwrap(x, width = 50), collapse = "<br>")})) %>%
+  mutate(
+    measure_cat = case_match(measure,
+                             "GESTATION AT BOOKING" ~ "average gestation at booking",
+                             "GESTATION AT TERMINATION" ~ "average gestation at termination",
+                             .default = measure_cat
+                             ),
+    measure_value = round(measure_value, 2),
+    MIN = min(measure_value, na.rm = TRUE),
+    MAX = max(measure_value, na.rm = TRUE),
+    RANGE = MAX - MIN,
+    RESCALED = round((measure_value - MIN) / RANGE, 2), # to stretch across entire x axis
+    MIN_RS = min(RESCALED, na.rm = TRUE),
+    MAX_RS = max(RESCALED, na.rm = TRUE),
+    plotlylabel = sapply(MIO_measure_label, # wraps label text
+                         FUN = function(x) {
+                           paste(strwrap(x, width = 50), collapse = "<br>")})) %>%
   ungroup() %>% 
   select(c(dataset, measure, hbtype, hbname, period, date, measure_cat, num, den, measure_value, suffix,
            MIO_measure_ref, MIO_measure_label, MIN, MAX, RANGE, RESCALED, MIN_RS, MAX_RS,
@@ -996,12 +1002,12 @@ for (i in seq_along(download_dataframe)) {
 download_dataframe[["GESTATION AT BIRTH"]]$measure_cat <-
   factor(download_dataframe[["GESTATION AT BIRTH"]]$measure_cat,
          levels = c("under 32 weeks",
-                    "between 32 and 36 weeks",
+                    "between 32 and 36 weeks (inclusive)",
                     "under 37 weeks",
-                    "between 37 and 41 weeks",
+                    "between 37 and 41 weeks (inclusive)",
                     #"between 37 and 42 weeks",
-                    "42 weeks and over",
-                    "between 18 and 44 weeks",
+                    "42 weeks and over (inclusive)",
+                    "between 18 and 44 weeks (inclusive)",
                     "unknown gestation",
                     "total")
   )
