@@ -1,3 +1,5 @@
+runchart_dataframe <- readRDS(paste0("../", data_path, "/", "runchart_dataframe.rds"))
+
 HBnames <- unique(runchart_dataframe$hbname)
 Measure_List <- unique(runchart_dataframe$measure)
 
