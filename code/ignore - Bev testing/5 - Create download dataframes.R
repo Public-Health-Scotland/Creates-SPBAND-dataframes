@@ -232,11 +232,7 @@ write_to_excel <- function(index) {
   wb_add_conditional_formatting(
     wb, 
     sheet = 1,
-    dims = wb_dims(cols = "A", rows = 1:4), rule = ">2")
-  
-
-  
-  
+    dims = wb_dims(cols = "A", rows = 1:4), rule = ">2"
     )
   
   wb_save(wb, paste0(dashboard_dataframes_folder, "/", "out_file.xlsx"), overwrite = TRUE)
