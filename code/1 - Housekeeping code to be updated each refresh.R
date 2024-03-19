@@ -30,13 +30,13 @@ source("code/functions.R")
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2024-03-12") # change this each time the data is updated
+refresh_date <- as.Date("2024-03-14") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
-cut_off_date <- ymd("2023-09-01") # month beginning, usually increments by 3 months
-cut_off_date_ABC <- ymd("2023-11-01") # month beginning (ABC more timely than SMR02)
-cut_off_date_Qtrly <- ymd("2023-07-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
+cut_off_date <- ymd("2023-12-01") # month beginning, usually increments by 3 months
+cut_off_date_ABC <- ymd("2024-02-01") # month beginning (ABC more timely than SMR02)
+cut_off_date_Qtrly <- ymd("2023-10-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
 
 # metadata file - for num, den, measure_value descriptions
 
@@ -58,15 +58,43 @@ file.exists(ABC_filename)
 
 # update Terminations data loction and filename here
 
-terminations_filename <- "../basefiles/Terminations/AAS-2017-onwards-covid-20231212.rds"
+terminations_filename <- "../basefiles/Terminations/AAS-2017-onwards-covid-20240314.rds"
 
 file.exists(terminations_filename)
 
 # update file name that contains NRS quarterly data (published)
 
-NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2023 Q3 - Table Q1.xlsx"
+NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2023 Q4 - Table Q1.xlsx"
 
 file.exists(NRS_filename)
+
+# create a vector with "complete" years (for multi indicator overview)
+# update as necessary
+
+factor_labels_year <- c("2023", "2022", "2021", "2020", "2019", "2018", "2017",
+                        "2022/23", "2021/22", "2020/21", "2019/20", "2018/19", "2017/18"
+                        )
+
+# create a vector containing "measure_cat" that will have a timeseries or runchart
+
+runchart_categories <- c("induced", "low (<7) apgar5 score", "3rd or 4th degree tears",
+                          "spontaneous vaginal births", "assisted vaginal births",
+                          "all caesarean births", "planned caesarean births",
+                          "unplanned caesarean births", "under 32 weeks",
+                          "between 32 and 36 weeks (inclusive)", "under 37 weeks", "between 37 and 41 weeks (inclusive)",
+                          "42 weeks and over (inclusive)", "between 18 and 44 weeks (inclusive)",
+                          "all pregnancies booked", "all terminations", "average gestation")
+
+# create a vector of Island Boards to remove them from the outputs if necessary
+
+island_boards <- c("NHS Orkney", "NHS Western Isles", "NHS Shetland")
+
+# read in HBNAME cipher names (for HBNAME of Treatment) in WI dashboard format,
+# also for HBNAME labels
+
+hbcipher <- read.csv("../basefiles/hb14_hb19.csv", stringsAsFactors = FALSE) %>% 
+  filter(is.na(HBDateArchived)) %>% # want the latest NHS Board codes
+  select(HBCIPHER, HBCODE, HBNAME, HBLABEL)
 
 # set local output folder for data - dated automatically
 

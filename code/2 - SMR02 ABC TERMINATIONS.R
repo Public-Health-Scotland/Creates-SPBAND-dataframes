@@ -20,34 +20,6 @@
 
 source("code/1 - Housekeeping code to be updated each refresh.R")
 
-# create a vector with "complete" years (for multi indicator overview)
-# update as necessary
-
-factor_labels_year <- c("2022", "2021", "2020", "2019", "2018", "2017",
-                        "2022/23", "2021/22", "2020/21", "2019/20", "2018/19", "2017/18"
-                        )
-
-# create a vector containing "measure_cat" that will have a timeseries or runchart
-
-runchart_categories <- c("induced", "low (<7) apgar5 score", "3rd or 4th degree tears",
-                          "spontaneous vaginal births", "assisted vaginal births",
-                          "all caesarean births", "planned caesarean births",
-                          "unplanned caesarean births", "under 32 weeks",
-                          "between 32 and 36 weeks (inclusive)", "under 37 weeks", "between 37 and 41 weeks (inclusive)",
-                          "42 weeks and over (inclusive)", "between 18 and 44 weeks (inclusive)",
-                          "all pregnancies booked", "all terminations", "average gestation")
-
-# create a vector of Island Boards to remove them from the outputs if necessary
-
-island_boards <- c("NHS Orkney", "NHS Western Isles", "NHS Shetland")
-
-# read in HBNAME cipher names (for HBNAME of Treatment) in WI dashboard format,
-# also for HBNAME labels
-
-hbcipher <- read.csv("../basefiles/hb14_hb19.csv", stringsAsFactors = FALSE) %>% 
-  filter(is.na(HBDateArchived)) %>% # want the latest NHS Board codes
-  select(HBCIPHER, HBCODE, HBNAME, HBLABEL)
-
 ### 2 - Read in source data ----
 
 ### 2a - SMR02 from .rds version ----
