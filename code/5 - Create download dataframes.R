@@ -105,8 +105,8 @@ tidy_data_download <- function(measure_selection) {
   
   if ("new_median" %in% names(data)) {
     data <- data %>%
-      rename(`New median` = new_median,
-             `Extended new median` = new_extended)
+      rename(`Revised median` = new_median,
+             `Extended revised median` = new_extended)
   }
   
   if ("mean" %in% names(data)) {
@@ -142,7 +142,7 @@ tidy_data_download <- function(measure_selection) {
   
   # make sure columns are in right order
   data <- data %>%
-    relocate(any_of(c("Dataset","Measure", "Board of", "Health Board", "Period", "Date", "Date label", "Sub-category", "Numerator", "Denominator", "Measure value", "Suffix", "Plotted on dashboard charts",  "Median", "Extended median", "New median", "Extended new median", "Mean", "Extended mean", "Centreline", "Lower warning limit", "Upper warning limit", "Lower control limit", "Upper control limit", "Shown on Multi indicator overview")
+    relocate(any_of(c("Dataset","Measure", "Board of", "Health Board", "Period", "Date", "Date label", "Sub-category", "Numerator", "Denominator", "Measure value", "Suffix", "Plotted on dashboard charts",  "Median", "Extended median", "Revised median", "Extended revised median", "Mean", "Extended mean", "Centreline", "Lower warning limit", "Upper warning limit", "Lower control limit", "Upper control limit", "Shown on Multi indicator overview")
     )
     )
   
