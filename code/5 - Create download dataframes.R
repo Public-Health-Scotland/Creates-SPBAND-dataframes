@@ -2,7 +2,7 @@
 # Pulls together all the download data for the  
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # and reformats it using pre-built Excel templates 
-# Bev Dodds
+# Kit Lawrence
 # 24 January 2024
 # Last update by Bev Dodds
 # Latest update description: initialised code
@@ -26,7 +26,8 @@ download_dataframe <- readRDS(
   paste0(data_path, "/download_dataframe.rds"))
 
 annual_dataframe <- readRDS(
-  paste0(data_path, "/annual_dataframe.rds"))
+  paste0(data_path, "/annual_dataframe.rds")) %>% 
+  mutate(hbname = str_remove(hbname, "[*]"))
 
 download_dataframe <- list_assign(download_dataframe,
                                    "STILLBIRTHS AND INFANT DEATHS" = readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds")),
@@ -161,7 +162,8 @@ write_to_excel <- function(index) {
   
   rownum <- ifelse(
     first(nice_download[[index]]$Measure) %in% c("Third- and fourth-degree perineal tears", 
-                                                 "Gestation at booking"),
+                                                 "Gestation at booking",
+                                                 "Gestation at termination"),
     8, 7)
 
 # load in the correct template

@@ -1,4 +1,18 @@
-runchart_dataframe <- readRDS(paste0("../", data_path, "/", "runchart_dataframe.rds"))
+library(here)
+library(shiny)
+library(shinymanager)
+library(shinydashboard)
+library(shinyWidgets)
+library(shinyjs)
+library(shinycssloaders)
+
+here::here("code/miniapp", "mini app to view data.R")
+
+# set local output folder for data - dated automatically
+
+data_path <- here(paste0("data/", refresh_date, " extract/"))
+
+runchart_dataframe <- readRDS(here(paste0(data_path, "runchart_dataframe.rds")))
 
 HBnames <- unique(runchart_dataframe$hbname)
 Measure_List <- unique(runchart_dataframe$measure)
@@ -22,11 +36,9 @@ ui <- fluidPage(
     ),
   
    mainPanel(
-     DTOutput("table")
+     DTOutput("table"),
    )
   )
-    
-    #plotlyOutput("gest_at_booking_runcharts")
   )
 
 server <- function(input, output) {
