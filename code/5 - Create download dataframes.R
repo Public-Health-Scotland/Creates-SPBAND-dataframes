@@ -236,26 +236,5 @@ write_to_excel <- function(index) {
 
 walk(1:length(download_dataframe), write_to_excel)
 
-# save outputs into a zipped file ready for copying to the dashboard folder
-
-zipfile <- "Excel-downloads.zip"
-
-files2zip <- dir(excel_downloads_folder, full.names = FALSE)
-
-zip::zip(zipfile,
-    files = files2zip,
-    include_directories = FALSE,
-    root = excel_downloads_folder)
-
-# once the content of the Excel downloads has been checked run this:
-
-# moves zip file to dashboard_dataframes folder and deletes excel_downloads folder
-
-file.rename(from = paste0(excel_downloads_folder, "/Excel-downloads.zip"),
-            to = paste0(dashboard_dataframes_folder, "/Excel-downloads.zip")
-)
-
-unlink(excel_downloads_folder, recursive = TRUE)
-
 # End of Script ----
                             

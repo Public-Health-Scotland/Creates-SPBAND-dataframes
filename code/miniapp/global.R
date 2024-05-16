@@ -1,7 +1,3 @@
-# load environment variables and packages
-
-source(here("code", "1 - Housekeeping code to be updated each refresh.R"))
-
 # load packages - needs to be reviewed
 
 library(labelled)
@@ -12,6 +8,18 @@ library(shinyWidgets)
 library(shinyjs)
 library(shinycssloaders)
 library(fresh)
+
+rstudioapi::executeCommand('activateConsole')
+
+refresh_date <- as.Date(readline("What is the refresh date? Format YYYY-MM-DD "))
+
+# point to folder for data - dated automatically
+
+data_path <- here(paste0("data/", refresh_date, " extract"))
+
+# point to the dashboard_dataframes folder
+
+dashboard_dataframes_folder <- here(paste0(data_path, "/dashboard_dataframes"))
 
 print(paste0("Data refreshed on ", refresh_date))
 print(paste0("Dataframe folder = ", dashboard_dataframes_folder))
@@ -24,7 +32,7 @@ NRS_published_date <- "12 March 2024"
 
 # folder for Excel downloads
 
-#excel_downloads_folder <- paste0(dashboard_dataframes_folder, "/excel downloads/")
+excel_downloads_folder <- paste0(dashboard_dataframes_folder, "/excel downloads/")
 
 # get Excel filenames
 
