@@ -46,9 +46,7 @@ cut_off_date_Qtrly <- ymd("2023-10-01") # quarter beginning (most complete) e.g.
 
 # metadata file - for num, den, measure_value descriptions
 
-metadata <- read.xlsx(here("../basefiles/measure metadata.xlsx"), sheet = 1) #%>% 
-  #select(-c("MIO_measure_cat", "MIO_measure_ref", "MIO_measure_label")
-         #) # for use after refresh in January 2023
+metadata <- read.xlsx(here("../basefiles/measure metadata.xlsx"), sheet = 1) 
 
 # Maternity team's SMR02 location and filename
 

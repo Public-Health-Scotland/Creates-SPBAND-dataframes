@@ -3,7 +3,7 @@
 # x: numerator
 # y: denominator
 
-percentage = function(x, y, na.rm = TRUE) {
+percentage  <- function(x, y, na.rm = TRUE) {
   x / y * 100
 }
 

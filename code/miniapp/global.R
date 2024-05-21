@@ -1,21 +1,70 @@
 # load packages - needs to be reviewed
 
 library(labelled)
+library(data.table)
+library(DT)
 library(shiny)
 library(shinymanager)
 library(shinydashboard)
 library(shinyWidgets)
 library(shinyjs)
 library(shinycssloaders)
+library(ggplot2)
+library(plotly)
+library(dplyr)
+library(tidyr)
+library(lubridate)
+library(stringr)
+library(phsstyles)
+library(phsmethods)
+library(purrr)
 library(fresh)
 
-rstudioapi::executeCommand('activateConsole')
+# # to get refresh_date if it isn't currently in the environment
+# 
+# # List files in the specified directory
+# files <- list.files("data", full.names = TRUE, pattern = "extract")
+# 
+# # Get file information (including modification time)
+# file_info <- file.info(files)
+# 
+# # Find the row corresponding to the most recent modification time
+# most_recent_row <- which.max(file_info$mtime)
+# 
+# # Get the path of the most recent file
+# most_recent_file_path <- rownames(file_info)[most_recent_row]
 
-refresh_date <- as.Date(readline("What is the refresh date? Format YYYY-MM-DD "))
+#refresh_date <- as.Date(gsub(" extract", "", basename(most_recent_file_path)))
+
+refresh_date <- NULL
+
+data_path <- NULL
 
 # point to folder for data - dated automatically
+  
+set_refresh_date <- function() {
+  
+  if (is.null(get0("refresh_date"))) {
+    rstudioapi::executeCommand('activateConsole')
+    answer <- readline("Should refresh_date be TODAY? Y/N ")
+    if (answer %in% c("Y", "y", "Yes", "yes")) {
+      refresh_date <- today() }
+    else {
+      refresh_date <- as.Date(readline("Please enter the refresh date in the format yyyy-mm-dd "))
+    }
+  }
+}
+
+refresh_date <- set_refresh_date()
 
 data_path <- here(paste0("data/", refresh_date, " extract"))
+
+while (dir.exists(data_path) == FALSE) {
+  print("That file path does not exist, try again.")
+  refresh_date <- NULL
+  refresh_date <- set_refresh_date()
+  data_path <- here(paste0("data/", refresh_date, " extract"))
+}
 
 # point to the dashboard_dataframes folder
 
@@ -223,28 +272,6 @@ mytheme <- create_theme(
   #box_border_color = "#FFF"
   #)
 )
-
-# mytheme <- create_theme(
-#   adminlte_color(
-#     light_blue = "#3F3685" # header bar = PHS-purple
-#     ),
-#   adminlte_sidebar( # sidebar colours
-#     width = "290px",
-#     dark_bg = "#9F9BC2", # background colour (not selected) = PHS-purple-50
-#     dark_hover_bg = "#655E9D", # background colour (when hovering) = PHS-purple-80
-#     dark_color = "#3F3685", # text colour (not selected) = PHS-purple
-#     dark_submenu_color = "#3F3685", # sub-menu text colour (not selected) = PHS-purple
-#     dark_submenu_hover_color = "#FFFFFF" # text colour (when hovering) = white
-#     ),
-#   adminlte_global(
-#     content_bg = "#FFF",
-#     box_bg = "#FFF",
-#     info_box_bg = "#FFF"
-#     )
-#   #adminlte_vars(
-#     #box_border_color = "#FFF"
-#     #)
-# )
 
 # buttons to remove (from plotly menu)
 
