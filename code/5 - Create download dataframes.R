@@ -5,7 +5,7 @@
 # Kit Lawrence
 # 24 January 2024
 # Last update by Bev Dodds
-# Latest update description: initialised code
+# Latest update description: tweaked code
 # Type of script - preparation and data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.2.1

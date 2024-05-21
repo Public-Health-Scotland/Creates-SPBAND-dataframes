@@ -4,9 +4,10 @@
 # Pregnancies booked, Average gestation at booking, Terminations, Average gestation at termination
 # Sourced from the Maternity Team's SMR02 data file, the ABC base file and the Terminations data file
 # Bev Dodds
-# Last update: 12 March 2024
+# Last update: 21 May 2024
 # Last update by: Bev Dodds
-# Latest update description: Made tweaks to factor descriptions to ensure that metadata is correctly picked up for the Excel downloads 
+# Latest update description: Finalised the "grouped" Island Board data for"Gestation at termination" and
+# added a working "miniapp" to view data in charts before exporting it to the dashboard project 
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.1.2 - note use of dplyr 1.1.0

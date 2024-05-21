@@ -1,3 +1,16 @@
+####
+# Provides a quick way to view the charts as seen in the full dashboard 
+# via mini Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
+# Bev Dodds
+# 21 May 2024
+# Latest update description: initialised code
+# Type of script - Shiny app code linking to functions in dashboard project to reduce duplication
+# Written/run on R Studio Server
+# Version of R - 4.2.1
+# Asks user for their name (to link to correct server folder) and refersh_date (to pull in the correct data)
+# Produces a cut-down version of the SPBAND to look for inconsistencies
+####
+
 library(here)
 
 here::here("code/miniapp", "miniapp.R")
