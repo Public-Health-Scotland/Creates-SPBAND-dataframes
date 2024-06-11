@@ -15,12 +15,14 @@ library(here)
 
 here::here("code/miniapp", "miniapp.R")
 
-rstudioapi::executeCommand('activateConsole')
+# rstudioapi::executeCommand('activateConsole')
+# 
+# username <- readline("What is your name? ")
 
-username <- readline("What is your name? ")
+server_folder <- "https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/"
 
-server_folder <- paste0("/PHI_conf/MaternityBirths/Topics/MaternityHospitalSubmissions/Publications/SPBAND/dashboard/",
-                        username, "/")
+# server_folder <- paste0("/PHI_conf/MaternityBirths/Topics/MaternityHospitalSubmissions/Publications/SPBAND/dashboard/",
+#                         username, "/")
 
 source(paste0(server_folder,
                 "functions.R"), local = FALSE)
@@ -682,6 +684,14 @@ gestation_at_booking <- tabItem(
                       ),
                       
                       column(12,
+                             uiOutput("correction") %>%
+                               tagAppendAttributes(style = "font-size:14px;
+                                                   text-align: left;"),
+                             
+                             br()
+                      ),
+
+                      column(12,
                              p(paste0("Data refreshed on ", pretty_refresh_date, "."),
                                class = "notes-style"
                              )
@@ -704,13 +714,10 @@ gestation_at_booking <- tabItem(
                                " publication.",
                                class = "notes-style"),
                              
-                             textOutput("correction") %>%
-                               tagAppendAttributes(style = "font-size:14px;
-                                                   text-align: left;"),
-
                              hr()
                              
                       ),
+                             
                       
                       column(12,
                              p("We have used run charts to present the data above. Run charts use a series of rules to help identify unusual behaviour in data and indicate patterns that merit further investigation. Read more about the rules used in the charts in the ‘How do we identify patterns in the data?’ section on the Home page."
@@ -1339,6 +1346,13 @@ type_of_birth <- tabItem(
                       ),
                       
                       column(12,
+                             p(textOutput("Borders_caesarean_footnote1") %>%
+                                 tagAppendAttributes(style = "font-size:14px;
+                                                   text-align: left;")
+                             )
+                      ),
+                      
+                      column(12,
                              p(paste0("Data refreshed on ", pretty_refresh_date, "."),
                                class = "notes-style"
                              )
@@ -1398,6 +1412,13 @@ type_of_birth <- tabItem(
                              br()
                              
                       ),
+                      
+                      column(12,
+                             p(textOutput("Borders_caesarean_footnote2") %>%
+                                 tagAppendAttributes(style = "font-size:14px;
+                                                   text-align: left;")
+                             )
+                      ),                     
                       
                       column(12,
                              p(paste0("Data refreshed on ", pretty_refresh_date, "."),
@@ -2433,7 +2454,10 @@ server <- function(input, output, session) {
         #session = session,
         inputId = "hbname",
         label = "Select Board",
-        choices = HBnames,
+        choices = c("Scotland", "NHS Ayrshire & Arran", "NHS Borders", "NHS Dumfries & Galloway",
+                    "NHS Fife", "NHS Forth Valley", "NHS Grampian", "NHS Greater Glasgow & Clyde",
+                    "NHS Highland", "NHS Lanarkshire", "NHS Lothian", "NHS Tayside", "NHS Orkney",
+                    "NHS Shetland", "NHS Western Isles"),
         selected = "Scotland",
         options = pickerOptions(size = 10), # shows 10 boards and a scroll bar - will drop up and not get hidden?
         choicesOpt = list(
@@ -2521,15 +2545,18 @@ server <- function(input, output, session) {
   })
   
   # builds Version table
-
-  `Version` <- c("1.0", "1.1", "1.2", "1.3")
-  `Date` <- c("3 Oct 2023", "9 Nov 2023", "15 Feb 2024", "2 Apr 2024")
+  
+  `Version` <- c("1.0", "1.1", "1.2", "1.3", "1.4")
+  `Date` <- c("3 Oct 2023", "9 Nov 2023", "15 Feb 2024", "2 Apr 2024", "2 Jul 2024")
   `Change` <- c("First public release of SPBAND",
                 "Amended Home - How to use this dashboard",
                 "Updated links and standardised titles, labels and metadata",
                 "Corrected the medians and shifts for NHS Forth Valley and NHS Tayside in the ‘Gestation at booking’ measure;
               replaced CSV download files with accessible Excel download files;
-              updated links and standardised titles, labels, legends and metadata"
+              updated links and standardised titles, labels, legends and metadata",
+              "Added aggregated values for the Island Boards in the ‘Gestation at termination’ measure - these Boards are now also represented on the Multi Indicator Overview for this measure;
+              revised the y-axis scales for the Island Boards in the small multiple charts (where possible) to make the mainland Boards' variation easier to see;
+              removed the 'dots' from the monthly small multiple charts (i.e. the ‘Gestation at booking’ and ‘Gestation at termination’ measures); added notes describing the issue with NHS Borders planned and unplanned caesarean birth rates"
   )
   
   version_info <- tibble(`Version`, `Date`, `Change`)
@@ -2540,22 +2567,45 @@ server <- function(input, output, session) {
   
   # deals with correction to Gestation at Booking for FV and Tayside
   
-  output$correction <- reactive({
-    
-    if_else(input$hbname %in% c("NHS Forth Valley", "NHS Tayside"), 
-            gest_at_booking_correction_text, "")
-    
+  url <- a("phs.matneodatahub@phs.scot", href="mailto:phs.matneodatahub@phs.scot")
+
+  output$correction <- renderUI({
+    tagList(gest_at_booking_correction_text, url)
   })
   
-  # footnote for MIO table and Av. gestation at termination runcharts (Island Boards)
+  observeEvent(input$hbname,
+               
+               toggleElement(id = "correction", 
+                             condition = input$hbname %in% c("NHS Forth Valley", "NHS Tayside"))
+  )
+  
+  # footnote Av. gestation at termination runcharts (when Island Boards are selected)
 
-  output$gest_at_termination_runcharts_footnote1 <- 
-    output$gest_at_termination_runcharts_footnote2 <- renderText({
+  output$gest_at_termination_runcharts_footnote1 <- renderText({
       if(input$hbname %in% island_names) {
         "* Values shown for the Island Boards (NHS Orkney, NHS Shetland and NHS Western Isles) for ‘Average gestation at termination’ are based on the data for those three Boards combined."
       }
     })
   
+ # footnote for Type of Birth - Board comparison - Borders caesarean anomalies
+  
+  observeEvent(input$tob,
+  
+  output$Borders_caesarean_footnote1 <- renderText({
+    if(grepl("planned", input$tob)) {
+      "* Data for NHS Borders for planned and unplanned caesarean births show some unusual patterns from April 2022 to date. We have been liaising with NHS Borders and believe this to be a recording issue rather than a true reflection of the numbers. We are working with the Board to try to further understand and rectify the issue."
+    }
+  })
+  )
+  
+  # footnote for Type of Birth - Individual Board - Borders caesarean anomalies
+
+  output$Borders_caesarean_footnote2 <- output$Borders_caesarean_footnote3 <- renderText({
+      if(input$hbname == "NHS Borders") {
+        "* Data for NHS Borders for planned and unplanned caesarean births show some unusual patterns from April 2022 to date. We have been liaising with NHS Borders and believe this to be a recording issue rather than a true reflection of the numbers. We are working with the Board to try to further understand and rectify the issue."
+      }
+    })
+
   # output$mytext <- renderText({ # for testing
   #   paste0("Topic = ", input$topics) 
   # })
@@ -2580,110 +2630,75 @@ server <- function(input, output, session) {
   
   # this section tells the app where to find the code for each tab
   
-  source(paste0(server_folder,
-                "Multi indicator overview/Multi indicator overview chart.R"), local = TRUE)
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Multi%20indicator%20overview/Multi%20indicator%20overview%20chart.R", local = environment())
   
-  source(paste0(server_folder,
-                "Multi indicator overview/Multi indicator overview table.R"), local = TRUE)
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Multi%20indicator%20overview/Multi%20indicator%20overview%20table.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Multi%20indicator%20overview/Multi%20indicator%20overview%20download%20data.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Antenatal%20booking/Antenatal%20bookings%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Terminations/Terminations%20runcharts.R", local = environment())
   
-  source(paste0(server_folder,
-                "Multi indicator overview/Multi indicator overview download data.R"), local = TRUE)
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Antenatal%20booking/Average%20gestation%20at%20booking%20small%20multiples.R", local = environment())
   
-  source(paste0(server_folder,
-                "Antenatal booking/Antenatal bookings runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Terminations/Terminations runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Antenatal booking/Average gestation at booking small multiples.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Antenatal booking/Average gestation at booking runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Antenatal booking/Average gestation at booking download data.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Terminations/Average gestation at termination small multiples.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Terminations/Average gestation at termination runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Terminations/Average gestation at termination download data.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Extremely preterm/Extremely preterm control chart.R"), local = TRUE) 
-  
-  source(paste0(server_folder,
-                "Extremely preterm/Extremely preterm context chart.R"), local = TRUE) 
-  
-  source(paste0(server_folder,
-                "Extremely preterm/Extremely preterm download data.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Inductions/Inductions small multiples.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Inductions/Inductions runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Inductions/Inductions context charts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Inductions/Inductions download data.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Type of birth/Type of birth small multiples.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Type of birth/Type of birth runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Type of birth/Type of birth context charts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Type of birth/Type of birth download data.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Tears/Tears small multiples.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Tears/Tears runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Tears/Tears context charts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Tears/Tears download data.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Gestation at birth/Gestation at birth small multiples.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Gestation at birth/Gestation at birth runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Gestation at birth/Gestation at birth context charts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Gestation at birth/Gestation at birth download data.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Stillbirths and infant deaths/Stillbirths runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Apgar5/Apgar5 small multiples.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Apgar5/Apgar5 runcharts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Apgar5/Apgar5 context charts.R"), local = TRUE)
-  
-  source(paste0(server_folder,
-                "Apgar5/Apgar5 download data.R"), local = TRUE)
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Antenatal%20booking/Average%20gestation%20at%20booking%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Antenatal%20booking/Average%20gestation%20at%20booking%20download%20data.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Terminations/Average%20gestation%20at%20termination%20small%20multiples.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Terminations/Average%20gestation%20at%20termination%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Terminations/Average%20gestation%20at%20termination%20download%20data.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Extremely%20preterm/Extremely%20preterm%20control%20chart.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Extremely%20preterm/Extremely%20preterm%20context%20chart.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Extremely%20preterm/Extremely%20preterm%20download%20data.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Inductions/Inductions%20small%20multiples.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Inductions/Inductions%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Inductions/Inductions%20context%20charts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Inductions/Inductions%20download%20data.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Type%20of%20birth/Type%20of%20birth%20small%20multiples.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Type%20of%20birth/Type%20of%20birth%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Type%20of%20birth/Type%20of%20birth%20context%20charts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Type%20of%20birth/Type%20of%20birth%20download%20data.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Tears/Tears%20small%20multiples.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Tears/Tears%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Tears/Tears%20context%20charts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Tears/Tears%20download%20data.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Gestation%20at%20birth/Gestation%20at%20birth%20small%20multiples.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Gestation%20at%20birth/Gestation%20at%20birth%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Gestation%20at%20birth/Gestation%20at%20birth%20context%20charts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Gestation%20at%20birth/Gestation%20at%20birth%20download%20data.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Stillbirths%20and%20infant%20deaths/Stillbirths%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20small%20multiples.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20runcharts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20context%20charts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20download%20data.R", local = environment())
   
 }
 

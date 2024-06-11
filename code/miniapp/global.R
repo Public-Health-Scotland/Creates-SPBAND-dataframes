@@ -40,17 +40,20 @@ refresh_date <- NULL
 
 data_path <- NULL
 
-# point to folder for data - dated automatically
-  
+# interactive element to request refresh_date - to load correct dataframes
+
+cat("This cut-down version of the dashboard needs access to the correct data. It assumes that you ran the data refresh.",
+    "\n", "Hit ESC to quit at any time.")
+
 set_refresh_date <- function() {
   
   if (is.null(get0("refresh_date"))) {
     rstudioapi::executeCommand('activateConsole')
-    answer <- readline("Should refresh_date be TODAY? Y/N ")
+    answer <- readline("Was the data refreshed TODAY? Y/N ")
     if (answer %in% c("Y", "y", "Yes", "yes")) {
       refresh_date <- today() }
     else {
-      refresh_date <- as.Date(readline("Please enter the refresh date in the format yyyy-mm-dd "))
+      refresh_date <- as.Date(readline("Please enter the correct date in the format yyyy-mm-dd "))
     }
   }
 }
@@ -220,24 +223,24 @@ island_names <- c("NHS Orkney", "NHS Shetland", "NHS Western Isles"
 
 # order for HB dropdown filter and small multiple charts
 
-HBnames <- c("Scotland", "NHS Ayrshire & Arran", "NHS Borders", "NHS Dumfries & Galloway",
+HBnames <- c("Scotland", "NHS Ayrshire & Arran", "NHS Borders", "NHS Borders*", "NHS Dumfries & Galloway",
              "NHS Fife", "NHS Forth Valley", "NHS Grampian", "NHS Greater Glasgow & Clyde",
              "NHS Highland", "NHS Lanarkshire", "NHS Lothian", "NHS Tayside", "NHS Orkney",
-             "NHS Shetland", "NHS Western Isles"
+             "NHS Shetland", "NHS Western Isles", "NHS Orkney, NHS Shetland and NHS Western Isles"
              )
 
 
-# order for small multiple charts in average gestation at termination
-
-HBnames_alternative <- c("Scotland", "NHS Ayrshire & Arran", "NHS Borders", "NHS Dumfries & Galloway",
-                         "NHS Fife", "NHS Forth Valley", "NHS Grampian", "NHS Greater Glasgow & Clyde",
-                         "NHS Highland", "NHS Lanarkshire", "NHS Lothian", "NHS Tayside",
-                         "NHS Orkney, NHS Shetland <br> and NHS Western Isles*"
-)
-
-# grouped island board name
-
-HBName_terminations <- "NHS Orkney, NHS Shetland and NHS Western Isles*"
+# # order for small multiple charts in average gestation at termination
+# 
+# HBnames_alternative <- c("Scotland", "NHS Ayrshire & Arran", "NHS Borders", "NHS Dumfries & Galloway",
+#                          "NHS Fife", "NHS Forth Valley", "NHS Grampian", "NHS Greater Glasgow & Clyde",
+#                          "NHS Highland", "NHS Lanarkshire", "NHS Lothian", "NHS Tayside",
+#                          "NHS Orkney, NHS Shetland <br> and NHS Western Isles*"
+# )
+# 
+# # grouped island board name
+# 
+# HBName_terminations <- "NHS Orkney, NHS Shetland and NHS Western Isles*"
 
 # sets colour palette to the PHS colour scheme
 

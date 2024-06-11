@@ -575,7 +575,7 @@ bookings_terminations$gest_grp3 <- factor(
 bookings_terminations <- bookings_terminations %>% 
   mutate(count = 1,
          hbname = if_else(dataset == "TERMINATIONS" & hbname %in% island_boards,
-                          "NHS Orkney, NHS Shetland and NHS Western Isles*", hbname)
+                          "NHS Orkney, NHS Shetland and NHS Western Isles", hbname)
          ) 
 
 ### 11 - TABLES of counts, percentages, averages ----
@@ -678,7 +678,7 @@ terminations <- # function needs all categories but only produces the totals unt
   counts(
     dataset = filter(bookings_terminations,
                      dataset == "TERMINATIONS" & 
-                       hbname != "NHS Orkney, NHS Shetland and NHS Western Isles*"),
+                       hbname != "NHS Orkney, NHS Shetland and NHS Western Isles"),
     variable = gest_grp3, # not used but needed for function
     tally_var = count,
     suffix = "", # for hovertext
@@ -956,7 +956,7 @@ download_dataframe <- left_join(
                    qtr(ymd(date), format = "short"),
                    format(date, "%b %Y")),
          measure_value = round(measure_value, 3),
-         hbname = str_remove(hbname, "[*]")
+         #hbname = str_remove(hbname, "[*]")
          ) %>% 
   select(dataset, measure, hbtype, hbname, period, date, date_label, measure_cat, num, den, measure_value,  suffix, plotted_on_charts, median, extended, new_median, new_extended, shown_on_MIO)
 
