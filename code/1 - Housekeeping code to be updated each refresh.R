@@ -36,7 +36,7 @@ source(here("code", "functions.R"))
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2024-05-07") # change this each time the data is updated
+refresh_date <- as.Date("2024-03-14") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
@@ -62,7 +62,7 @@ file.exists(ABC_filename)
 
 # update Terminations data loction and filename here
 
-terminations_filename <- "../basefiles/Terminations/AAS-2017-onwards-covid-20240314.rds"
+terminations_filename <- "../basefiles/Terminations/topss_data_extract.rds"
 
 file.exists(terminations_filename)
 

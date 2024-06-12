@@ -1001,7 +1001,4 @@ save(annual_dataframe,
   file = paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations.RData")
 )
 
-# once the data has been checked in the PRA dashboard it should be copied to the SPBAND data folder 
-# as the published dashboard is a self-contained entity
-
 ### - END OF SCRIPT ----
