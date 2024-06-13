@@ -13,6 +13,5 @@ library(plotly)
 library(labelled)
 library(snakecase)
 library(DT)
-library(shinyWidgets)
 library(purrr)
 

@@ -3,9 +3,9 @@
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Bev Dodds
 # 12 July 2023
-# Last update: 20 February 2024
+# Last update: 07 May 2024
 # Last update by: Bev Dodds
-# Latest update description: Amended downloads to be separate Excel files built from templates
+# Latest update description: Amended code to deal with grouped Island Boards in average gestation at termination measure
 # Type of script - preparation
 # Written/run on Posit Workbench
 # Version of R - 4.1.2
@@ -18,15 +18,21 @@
 # This section should be the only section of the script which requires manual changes 
 # for future updates and includes:
 
+library(here)
+
 Sys.umask("002") # ensures new folders are created with the correct group permissions
 
 # loading packages
 
-source("code/packages.R")
+# source("code/packages.R")
+
+source(here("code", "packages.R"))
 
 # define functions
 
-source("code/functions.R")
+# source("code/functions.R")
+
+source(here("code", "functions.R"))
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
@@ -40,9 +46,7 @@ cut_off_date_Qtrly <- ymd("2023-10-01") # quarter beginning (most complete) e.g.
 
 # metadata file - for num, den, measure_value descriptions
 
-metadata <- read.xlsx("../basefiles/measure metadata.xlsx", sheet = 1) #%>% 
-  #select(-c("MIO_measure_cat", "MIO_measure_ref", "MIO_measure_label")
-         #) # for use after refresh in January 2023
+metadata <- read.xlsx(here("../basefiles/measure metadata.xlsx"), sheet = 1) 
 
 # Maternity team's SMR02 location and filename
 
@@ -58,7 +62,7 @@ file.exists(ABC_filename)
 
 # update Terminations data loction and filename here
 
-terminations_filename <- "../basefiles/Terminations/AAS-2017-onwards-covid-20240314.rds"
+terminations_filename <- "../basefiles/Terminations/topss_data_extract.rds"
 
 file.exists(terminations_filename)
 
@@ -92,13 +96,13 @@ island_boards <- c("NHS Orkney", "NHS Western Isles", "NHS Shetland")
 # read in HBNAME cipher names (for HBNAME of Treatment) in WI dashboard format,
 # also for HBNAME labels
 
-hbcipher <- read.csv("../basefiles/hb14_hb19.csv", stringsAsFactors = FALSE) %>% 
+hbcipher <- read.csv(here("../basefiles/hb14_hb19.csv"), stringsAsFactors = FALSE) %>% 
   filter(is.na(HBDateArchived)) %>% # want the latest NHS Board codes
   select(HBCIPHER, HBCODE, HBNAME, HBLABEL)
 
 # set local output folder for data - dated automatically
 
-data_path <- paste0("./data/", refresh_date, " extract")
+data_path <- here(paste0("data/", refresh_date, " extract"))
 
 # create this folder if it doesn't already exist
 
@@ -108,7 +112,7 @@ if (!dir.exists(data_path)) {
 
 # create the dashboard_dataframes folder
 
-dashboard_dataframes_folder <- paste0(data_path, "/dashboard_dataframes")
+dashboard_dataframes_folder <- here(paste0(data_path, "/dashboard_dataframes"))
 
 # create this folder if it doesn't already exist
 
@@ -118,11 +122,11 @@ if (!dir.exists(dashboard_dataframes_folder)) {
 
 # map the Excel templates folder (for accessible downloads)
 
-excel_templates_folder <- "../basefiles/excel templates/"
+excel_templates_folder <- here("../basefiles/excel templates/")
 
 # create the Excel downloads folder
 
-excel_downloads_folder <- paste0(dashboard_dataframes_folder, "/excel downloads")
+excel_downloads_folder <- here(paste0(dashboard_dataframes_folder, "/excel downloads"))
 
 # create this folder if it doesn't already exist
 

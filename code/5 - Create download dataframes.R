@@ -2,10 +2,10 @@
 # Pulls together all the download data for the  
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # and reformats it using pre-built Excel templates 
-# Bev Dodds
+# Kit Lawrence
 # 24 January 2024
 # Last update by Bev Dodds
-# Latest update description: initialised code
+# Latest update description: tweaked code
 # Type of script - preparation and data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.2.1
@@ -33,7 +33,7 @@ download_dataframe <- list_assign(download_dataframe,
                                    "EXTREMELY PRETERM" = readRDS(paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")),
                                    "MULTI INDICATOR OVERVIEW" = annual_dataframe)
 
-# Make each dataset presentable ----
+### 2 - Make each dataset presentable ----
 
 # this function will change each variable name in the download_dataframe into a presentable form
 
@@ -154,16 +154,24 @@ tidy_data_download <- function(measure_selection) {
 map(names(download_dataframe), tidy_data_download) -> nice_download
 names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
 
+### 3 - Write each dataframe to Excel  ----
+
+# set rownum - this is the row number where the data table should start
+
+  rownum <- case_match(
+    names(nice_download),
+    c("tears",
+      "gestation_at_termination") ~ 8,
+    "gestation_at_booking" ~ 11,
+    "type_of_birth" ~ 9,
+    .default = 7
+  )
+
 # function to take each dataset and write it into the correct template
 
 write_to_excel <- function(index) {
   typeof(names(nice_download)[index])
   
-  rownum <- ifelse(
-    first(nice_download[[index]]$Measure) %in% c("Third- and fourth-degree perineal tears", 
-                                                 "Gestation at booking"),
-    8, 7)
-
 # load in the correct template
   
   wb <- loadWorkbook(
@@ -177,7 +185,7 @@ write_to_excel <- function(index) {
   writeDataTable(wb,
                  sheet = 1,
                  x = nice_download[[index]],
-                 startRow = rownum,
+                 startRow = rownum[index],
                  tableStyle = "TableStyleLight1",
                  tableName = paste0(str_to_title(names(nice_download)[index]), "_data"),
   )
@@ -186,21 +194,21 @@ write_to_excel <- function(index) {
 
   setRowHeights(wb,
                 sheet = 1,
-                rows = rownum,
+                rows = rownum[index],
                 heights = 60)
 
 # set table row heights (excluding header row)
 
   setRowHeights(wb,
                 sheet = 1,
-                rows = rownum + 1:(length(nice_download[[index]]$Dataset) + rownum + 1),
+                rows = rownum[index] + 1:(length(nice_download[[index]]$Dataset) + rownum[index] + 1),
                 heights = 30)
 
 # make whole table vertically centred and text wrapped
 
   addStyle(wb,
            sheet = 1,
-           rows = rownum:(length(nice_download[[index]]$Dataset) + rownum),
+           rows = rownum[index]:(length(nice_download[[index]]$Dataset) + rownum[index]),
            cols = 1:length(nice_download[[index]]),
            gridExpand = TRUE,
            stack = TRUE,
@@ -211,7 +219,7 @@ write_to_excel <- function(index) {
 
   addStyle(wb,
            sheet = 1,
-           rows = rownum:(length(nice_download[[index]]$Dataset) + rownum),
+           rows = rownum[index]:(length(nice_download[[index]]$Dataset) + rownum[index]),
            cols = 6,
            gridExpand = TRUE,
            stack = TRUE,
@@ -233,27 +241,6 @@ write_to_excel <- function(index) {
 # run this function on all indicators
 
 walk(1:length(download_dataframe), write_to_excel)
-
-# save outputs into a zipped file ready for copying to the dashboard folder
-
-zipfile <- "Excel-downloads.zip"
-
-files2zip <- dir(excel_downloads_folder, full.names = FALSE)
-
-zip::zip(zipfile,
-    files = files2zip,
-    include_directories = FALSE,
-    root = excel_downloads_folder)
-
-# once the content of the Excel downloads has been checked run this:
-
-# moves zip file to dashboard_dataframes folder and deletes excel_downloads folder
-
-file.rename(from = paste0(excel_downloads_folder, "/Excel-downloads.zip"),
-            to = paste0(dashboard_dataframes_folder, "/Excel-downloads.zip")
-)
-
-unlink(excel_downloads_folder, recursive = TRUE)
 
 # End of Script ----
                             

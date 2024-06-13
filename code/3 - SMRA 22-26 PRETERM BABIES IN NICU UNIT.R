@@ -216,6 +216,11 @@ extremely_preterm_data <- readRDS(paste0(dashboard_dataframes_folder, "/extremel
 
 ### 5 - Testing charts look OK ----
 
+server_folder <- "https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/"
+
+source(paste0(server_folder,
+                "functions.R"), local = FALSE)
+
 # tells plotly where to place x-axis tick marks and labels
 
 SMR02_date_range <- unique(extremely_preterm_data$date)

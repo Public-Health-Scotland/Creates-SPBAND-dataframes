@@ -4,9 +4,10 @@
 # Pregnancies booked, Average gestation at booking, Terminations, Average gestation at termination
 # Sourced from the Maternity Team's SMR02 data file, the ABC base file and the Terminations data file
 # Bev Dodds
-# Last update: 12 March 2024
+# Last update: 21 May 2024
 # Last update by: Bev Dodds
-# Latest update description: Made tweaks to factor descriptions to ensure that metadata is correctly picked up for the Excel downloads 
+# Latest update description: Finalised the "grouped" Island Board data for"Gestation at termination" and
+# added a working "miniapp" to view data in charts before exporting it to the dashboard project 
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.1.2 - note use of dplyr 1.1.0
@@ -569,13 +570,12 @@ bookings_terminations$gest_grp3 <- factor(
              )
   )
 
-# remove island boards from the terminations dataset 
+# group island boards in the average gestation terminations dataset 
 
 bookings_terminations <- bookings_terminations %>% 
-  filter(!(dataset == "TERMINATIONS" & hbname %in% island_boards)) %>% 
-  mutate(count = 1
-         #hbname = if_else(dataset == "TERMINATIONS" & hbname %in% island_boards,
-                          #"NHS Orkney, NHS Shetland and NHS Western Isles", hbname)
+  mutate(count = 1,
+         hbname = if_else(dataset == "TERMINATIONS" & hbname %in% island_boards,
+                          "NHS Orkney, NHS Shetland and NHS Western Isles", hbname)
          ) 
 
 ### 11 - TABLES of counts, percentages, averages ----
@@ -676,7 +676,9 @@ bookings <- bookings %>%
 
 terminations <- # function needs all categories but only produces the totals until disclosure ready
   counts(
-    dataset = filter(bookings_terminations, dataset == "TERMINATIONS"),
+    dataset = filter(bookings_terminations,
+                     dataset == "TERMINATIONS" & 
+                       hbname != "NHS Orkney, NHS Shetland and NHS Western Isles"),
     variable = gest_grp3, # not used but needed for function
     tally_var = count,
     suffix = "", # for hovertext
@@ -954,9 +956,9 @@ download_dataframe <- left_join(
                    qtr(ymd(date), format = "short"),
                    format(date, "%b %Y")),
          measure_value = round(measure_value, 3),
-         MIO_measure_label = str_remove(MIO_measure_label, "[*+]")
+         #hbname = str_remove(hbname, "[*]")
          ) %>% 
-  select(dataset, measure, hbtype, hbname, period, date, date_label, measure_cat, num, den, measure_value,  suffix, plotted_on_charts, median, extended, new_median, new_extended, shown_on_MIO, MIO_measure_label, contains("description"))
+  select(dataset, measure, hbtype, hbname, period, date, date_label, measure_cat, num, den, measure_value,  suffix, plotted_on_charts, median, extended, new_median, new_extended, shown_on_MIO)
 
 download_dataframe <- download_dataframe %>% 
   split(.$measure) 
@@ -998,8 +1000,5 @@ save(annual_dataframe,
      factor_labels_year,
   file = paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations.RData")
 )
-
-# once the data has been checked in the PRA dashboard it should be copied to the SPBAND data folder 
-# as the published dashboard is a self-contained entity
 
 ### - END OF SCRIPT ----
