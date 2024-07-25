@@ -20,6 +20,8 @@
 
 source("code/1 - Housekeeping code to be updated each refresh.R")
 
+print(refresh_date) # checks the right data is being read
+
 # Read in the data to be reformatted
 
 download_dataframe <- readRDS(
@@ -100,13 +102,19 @@ tidy_data_download <- function(measure_selection) {
   if ("median" %in% names(data)) {
     data <- data %>%
       rename(Median = median,
-             `Extended median` = extended)
+             `Extended median` = extended_median)
   }
   
-  if ("new_median" %in% names(data)) {
+  if ("revised_median" %in% names(data)) {
     data <- data %>%
-      rename(`Revised median` = new_median,
-             `Extended revised median` = new_extended)
+      rename(`Revised median` = revised_median,
+             `Extended revised median` = extended_revised_median)
+  }
+  
+  if ("post_pandemic_median" %in% names(data)) {
+    data <- data %>%
+      rename(`Post-pandemic median` = post_pandemic_median,
+             `Extended post-pandemic median` = extended_post_pandemic_median)
   }
   
   if ("mean" %in% names(data)) {
@@ -142,7 +150,7 @@ tidy_data_download <- function(measure_selection) {
   
   # make sure columns are in right order
   data <- data %>%
-    relocate(any_of(c("Dataset","Measure", "Board of", "Health Board", "Period", "Date", "Date label", "Sub-category", "Numerator", "Denominator", "Measure value", "Suffix", "Plotted on dashboard charts",  "Median", "Extended median", "Revised median", "Extended revised median", "Mean", "Extended mean", "Centreline", "Lower warning limit", "Upper warning limit", "Lower control limit", "Upper control limit", "Shown on Multi indicator overview")
+    relocate(any_of(c("Dataset","Measure", "Board of", "Health Board", "Period", "Date", "Date label", "Sub-category", "Numerator", "Denominator", "Measure value", "Suffix", "Plotted on dashboard charts",  "Median", "Extended median", "Revised median", "Extended revised median", "Post-pandemic median", "Extended post-pandemic median", "Mean", "Extended mean", "Centreline", "Lower warning limit", "Upper warning limit", "Lower control limit", "Upper control limit", "Shown on Multi indicator overview")
     )
     )
   
