@@ -78,7 +78,7 @@ NRS <- NRS %>%
 
 # create "marker" variables
 
-# "drop" marks "Full year" rows (apart from 2020) and Apr-Jun 2020 (to make chart look balanced) - these are dropped
+# "drop" marks "Full year" rows (apart from 2020) - these are dropped
 # "flag_NA" marks 2020 quarterly values to reset to NA (not valid, but kept to make chart look balanced)
 # "use_for_mean" marks the rows that contribute to the average (currently the pre-pandemic period to Oct-Dec 2019)
 
@@ -92,12 +92,6 @@ NRS <- NRS %>%
   tibble::rowid_to_column() # creates a row number variable 
 
 # reorder 2020 quarter values 1st, 2nd, Full year, 3rd, 4th - for chart x-axis label layout - to ensure break in line
-# 
-# NRS$rowid <- case_match(NRS$rowid,
-#                         17 ~ 18,
-#                         18 ~ 17,
-#                         #23 ~ 22,
-#                         .default = NRS$rowid)
 
 NRS$rowid <- case_match(NRS$rowid,
                         17 ~ 19,
@@ -107,8 +101,7 @@ NRS$rowid <- case_match(NRS$rowid,
 
 NRS <- arrange(NRS, rowid)
 
-# extract all unique values of date_label to set factor levels in correct order (all quarters except Apr-Jun 2020,
-# uses 2020 instead)
+# extract all unique values of date_label to set factor levels in correct order
 
 NRS$date_label = factor(NRS$date_label,
                            levels = NRS$date_label,
@@ -213,13 +206,16 @@ NRS_timeseries <- left_join(NRS_timeseries, mean_rates) %>%
 # reset mean to NA after 2019, set extended to mean after 2019, remove 2020 quarter values
 
 NRS_timeseries <- NRS_timeseries %>% 
-  mutate(extended = mean, # extended has to have a point for every date or the chart doesn't plot in the right date order
+  mutate(extended = mean, 
          mean =
-           if_else(use_for_mean == FALSE, NA, mean), 
+           if_else(use_for_mean == FALSE, NA, mean),
+         extended = if_else(!is.na(mean), NA, extended), # prevents extended line overlaying mean line on chart
          num = if_else(flag_NA, NA_real_, num), # removes the incomplete numbers for 2020 quarters
          den = if_else(flag_NA, NA_real_, den), # removes the incomplete numbers for 2020 quarters
          measure_value = if_else(flag_NA, NA_real_, measure_value) # removes the data points for the 2020 quarters, not plotted
-  )
+  ) |> 
+  group_by(measure_cat) |> 
+  mutate(extended = if_else(date_label == "Oct-Dec 2019", lag(mean), extended)) # makes extended line run on from mean line on chart 
 
 # add metadata labels for download file
 
@@ -242,7 +238,7 @@ NRS_timeseries <- NRS_timeseries %>%
 # set 2020 label to annual rate
 
 NRS_timeseries <- NRS_timeseries %>% 
-  mutate(measure_value_description = if_else(date == "2020",
+  mutate(measure_value_description = if_else(date_label == "2020",
                                        str_replace_all(measure_value_description, "quarterly", "annual"),
                                        measure_value_description)
          )
@@ -274,6 +270,12 @@ NRS_timeseries <- readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infa
 
 ### 6 - Testing charts look OK ----
 
+# remove "Apr-Jun 2020" row (to balance chart)
+
+NRS_timeseries <- NRS_timeseries |> 
+  filter(date_label != "Apr-Jun 2020") |> 
+  mutate(date = if_else(date_label == "2020", as.Date("2020-04-01"), as.Date(date)))
+
 # set y-axis labels for charts
 
 yaxislabel1 <- list(title = list(text = "rate per 1,000 total (live + still) births",
@@ -286,17 +288,17 @@ yaxislabel2 <- list(title = list(text = "rate per 1,000 live births",
 
 y_max <- max(NRS_timeseries$measure_value, na.rm = TRUE) 
 
-date_range_NRS <- as.character(unique(NRS_timeseries$date_label))
+date_range_NRS <- as.character(unique(NRS_timeseries$date))
+
+date_label_range_NRS <- as.character(unique(NRS_timeseries$date_label))
 
 # tells plotly where to place x-axis tick marks and labels
 
-# NRS_date_tickvals <- c(date_range_NRS[seq(1, 16, 2)], " ", "2020", " ", " ",
-#                        date_range_NRS[seq(21, length(date_range_NRS), 2)])
+NRS_date_tickvals <- c(date_range_NRS[seq(1, 16, 2)], date_range_NRS[18], # only mark "Apr-Jun 2020" which is the annual figure
+                       date_range_NRS[seq(21, length(date_range_NRS), 2)])
 
-NRS_date_tickvals <- c(date_range_NRS[seq(1, 16, 2)], "2020", " ", " ",
-                       date_range_NRS[seq(22, length(date_range_NRS), 2)])
-
-NRS_date_ticktext <- NRS_date_tickvals
+NRS_date_ticktext <- c(date_label_range_NRS[seq(1, 16, 2)], "2020", # labels to match marks
+                       date_label_range_NRS[seq(21, length(date_label_range_NRS), 2)])
 
 xaxis_plots <- orig_xaxis_plots
 xaxis_plots[["tickmode"]] = "array" # makes non-date x-axis labels follow correct order
@@ -313,8 +315,7 @@ yaxis_plots[["range"]] <- list(0, y_max * 1.05) # expands the y-axis range to pr
 stillbirths_runchart_data <-
 
 NRS_timeseries %>%
-  filter(!measure_cat %like% "total" & # don't want the "total" values
-           date_label != "Jan-Mar 2020") %>% # remove point from plot for a balanced look
+  filter(!measure_cat %like% "total") |> # don't want the "total" values
   mutate(measure_label = paste0("Rate per 1000 ", den_description),
          hover_date_label = if_else(date_label == "2020",
                               paste0("Year: ", date_label),
@@ -344,24 +345,8 @@ stillbirth_charts <- stillbirths_runchart_data %>%
   lapply(
     function(d)
       plot_ly(d, 
-              x = ~ date_label,
-              y = ~ extended, # dotted blue line # this line first as plotting last leads to overrun 
-              type = "scatter",
-              mode = "lines",
-              line = list(
-                color = phs_colours("phs-blue"), 
-                width = 1,
-                dash = "4"
-                ),
-              name = "projected average from Jan-Mar 2020", # label of variable
-              legendrank = 300, 
-              legendgroup = "extended",
-              showlegend = ~ unique(measure_cat) == "infant deaths",
-              hovertext = "",
-              hoverinfo = "none"
-              ) %>%
-      add_trace(
-        y = ~ measure_value,
+              x = ~ date,
+              y = ~ measure_value,
         type = "scatter",
         mode = "lines+markers",
         line = list(color = "black", # black lines
@@ -375,19 +360,37 @@ stillbirth_charts <- stillbirths_runchart_data %>%
         showlegend = ~ unique(measure_cat) == "infant deaths",
         hovertext = ~ mytext,
         hoverinfo = "text"
-        ) %>%
+        ) |> 
       add_trace(
         y = ~ mean, # solid blue line
         type = "scatter",
         mode = "lines",
         line = list(color = phs_colours("phs-blue"), 
                     width = 1, dash = "solid"),
+        marker = NULL,
         name = "average to Oct-Dec 2019", # label of variable
         legendrank = 200,
         legendgroup = "mean",
         showlegend = ~ unique(measure_cat) == "infant deaths",
         hovertext = ""
-        ) %>%
+        ) |> 
+      add_trace(
+        y = ~ extended, # dotted blue line # this line first as plotting last leads to overrun 
+        type = "scatter",
+        mode = "lines",
+        line = list(
+          color = phs_colours("phs-blue"), 
+          width = 1,
+          dash = "4"
+        ),
+        marker = NULL,
+        name = "projected average from Jan-Mar 2020", # label of variable
+        legendrank = 300, 
+        legendgroup = "extended",
+        showlegend = ~ unique(measure_cat) == "infant deaths",
+        hovertext = "",
+        hoverinfo = "none"
+      ) |> 
       layout(xaxis = xaxis_plots,
              yaxis = yaxis_plots,
              annotations = list(
