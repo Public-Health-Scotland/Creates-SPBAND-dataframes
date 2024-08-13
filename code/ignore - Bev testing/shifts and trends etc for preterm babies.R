@@ -14,8 +14,8 @@
 
 # Function to flag shifts and trends on run chart data
 # Parameters:
-# shift: the name for the new variable where shift is flagged
-# trend: the name for the new variable where trend is flagged
+# shift: the name for the new variable where shift is flagged (8 consecutive points above or below centreline)
+# trend: the name for the new variable where trend is flagged (6 consecutive increasing or decreasing points)
 # value: the name of the variable which contains the value being evaluated
 # mean: the name of the variable which contains the mean against which value is tested
 
@@ -69,4 +69,4 @@ temp <- control_chart_flags(
   shift = "orig_shift",
   trend = "orig_trend",
   value = measure_value,
-  mean = mean) 
+  mean = centreline) 
