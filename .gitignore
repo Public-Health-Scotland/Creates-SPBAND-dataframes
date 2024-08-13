@@ -7,7 +7,6 @@
 data/
 
 # 'html' files
-
 *.[hH][tT][mM][lL]
 
 # Common text files that may contain data #
