@@ -343,7 +343,7 @@ bookings_terminations <- bind_rows(filter(analysis_ALL, dataset == "ABC" &
 ) |> 
   mutate(median_name = case_when(
     month_beginning <= "2020-02-01" & period == "M" ~ "median",
-    between(month_beginning, as.Date("2022-07-01"), as.Date("2024-06-01")) & dataset == "ABC" & period == "M" ~ "post-pandemic median",
+    between(month_beginning, as.Date("2022-07-01"), as.Date("2024-06-01")) & period == "M" ~ "post-pandemic median",
     .default = NA
   )
   ) |> 
@@ -872,7 +872,7 @@ av_gestation <- av_gestation |>
   mutate(median_name = 
            case_when(
              month_beginning <= "2020-02-01" & period == "M" ~ "median",
-             between(month_beginning, as.Date("2022-07-01"), as.Date("2024-06-01")) & dataset == "ABC" & period == "M" ~ "post-pandemic median",
+             between(month_beginning, as.Date("2022-07-01"), as.Date("2024-06-01")) & period == "M" ~ "post-pandemic median",
              dataset == "ABC" & period == "M" & 
                      ((hbname == "NHS Forth Valley" &
                          date >= "2021-03-01" & date <= "2022-02-01") | # 12 months
@@ -990,12 +990,15 @@ remaining_dataframe <- remaining_dataframe %>%
 # temporarily copy some data to check extended post-pandemic median 
 
 temp <- filter(remaining_dataframe, between(date, as.Date("2020-02-01"), as.Date("2020-08-01")) &
-                 period == "M" & measure == "GESTATION AT BOOKING"
-               ) |> mutate(date = date %m+% months(52),
-                           median_name = if_else(date == "2024-06-01", 
-                                                 "post-pandemic median",
-                                                 NA)
-               )
+                 period == "M" & measure %in% c("GESTATION AT BOOKING", "GESTATION AT TERMINATION")
+) |> 
+  mutate(date = if_else(dataset == "ABC", 
+                        date %m+% months(52),
+                        date %m+% months(50)),
+         median_name = if_else(date <= "2024-06-01", 
+                               "post-pandemic median",
+                               NA)
+  )
 
 remaining_dataframe <- bind_rows(remaining_dataframe, temp)
 
@@ -1326,3 +1329,4 @@ save(annual_dataframe,
 )
 
 ### - END OF SCRIPT ----
+

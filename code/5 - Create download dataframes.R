@@ -170,7 +170,7 @@ names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
     names(nice_download),
     c("tears",
       "gestation_at_termination") ~ 8,
-    "gestation_at_booking" ~ 11,
+    "gestation_at_booking" ~ 8,
     "type_of_birth" ~ 9,
     .default = 7
   )
