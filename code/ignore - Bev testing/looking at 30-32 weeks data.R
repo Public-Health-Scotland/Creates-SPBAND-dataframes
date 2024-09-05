@@ -8,7 +8,7 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 births_raw <- 
   readRDS(SMR02_filename) %>%
   filter(year >= 2016 & condis == 3 & outcome1 == 1) %>%  # maternity record live births
-  mutate(dataset = "SMR02",
+  mutate(dataset = "NeoCare+",
          date = ymd(dodis),
          estgest = na_if(estgest, 99)) %>% 
   select(dataset, date, upi, numbir,
