@@ -11,10 +11,10 @@ percentage  <- function(x, y, na.rm = TRUE) {
 # Parameters:
 # dataset: defaults to births (can be modified)
 # variable: name of the variable to be counted
-# date: date
+# date: the name of the date variable, default = date
 # median_name: the name of the median period to calculate the median over
 # subgroup: name of a subgroup (e.g. SIMD, gestation_group), default is NULL = no subgroup
-# tally_var: name of the denominator variable (defaults to births)
+# tally_var: name of the denominator variable, default = births
 # suffix: a character describing the nature of the measure (e.g. "%")
 # measure: the name of the measure (e.g. "GESTATION AT BIRTH")
 
@@ -22,11 +22,9 @@ counts <-
   function(dataset = births, variable, date = date, median_name, 
            subgroup = NULL, tally_var = births, suffix, measure){ 
     
-    # key, key_measure_cat, key_measure_label){
-    
     name <- substitute(subgroup)
     #print(name)
-
+    
     data <- filter({{dataset}}, !is.na({{variable}})) # selects and filters dataset (removes NAs)
     
     if({{measure}} == "TERMINATIONS") { # TERMINATIONS has no grouping variable
@@ -44,20 +42,6 @@ counts <-
       
     } else {
       
-    # 
-    # # if({{measure}} %in% c("BOOKINGS", "TERMINATIONS", "GESTATION AT BOOKING",
-    # #                          "GESTATION AT TERMINATION")) { # only shown monthly
-    # #   
-    # #   data <- filter(data, period != "Q") # removes quarterly data
-    # #     
-    # #   } else { 
-    # 
-    # # if({{measure}} != "TYPE OF BIRTH") { # only shown quarterly except TOB for MCQIC
-    # #     
-    # #     data <- filter(data, period != "M") # removes monthly data except for TYPE OF BIRTH
-    # #     }
-    # #   } ##### redundant
-    # 
       data <- data %>%
         
         # aggregates numerator (num) over specified group
@@ -69,60 +53,60 @@ counts <-
         summarise(num = sum({{tally_var}}))
       
       data <- data %>%
-
+        
         # pivots numerators from measure_cat to calculate totals
-
+        
         pivot_wider(names_from = measure_cat,
                     names_prefix = "num_",
                     values_from = num,
                     values_fill = 0
-                    ) %>%
+        ) %>%
         mutate(`num_total` = sum(across(where(is.numeric))),
                den = `num_total` - sum(across(contains("unknown"))), # den only includes "known" values - but this does include "other" gestations
                flag = sum(across(contains("unknown"))) == 0, # if there is no "unknown" column flag = TRUE
                `num_total exc. unknown` = den,
-               ) %>%
+        ) %>%
         relocate(`num_total exc. unknown`,
                  .before = contains("unknown")
-                 )
+        )
       
       if(sum(data$flag == 0)) { # i.e. there are no valid "unknowns"
-
+        
         data <- select(data, - flag)
         
       } else {
         
         data <- select(data, -c(`num_total exc. unknown`, flag))
       }
-
+      
       if({{measure}} == "TYPE OF BIRTH"){
-
+        
         data <- data %>%
-
+          
           # calculates "all" caesarean births
-
+          
           mutate(`num_all caesarean births` =
                    `num_planned caesarean births` +
                    `num_unplanned caesarean births`) %>%
           relocate(`num_all caesarean births`,
                    .before = `num_planned caesarean births`)
-
+        
       }
-
+      
       data <- data %>%
-
+        
         # pivots longer again
-
+        
         pivot_longer(cols = starts_with("num_"),
                      names_to = "measure_cat",
                      names_prefix = "num_",
                      values_to = "num")
     }
-
+    
     if(!{{measure}} %in% c("BOOKINGS", "TERMINATIONS")) {
-
+      
       data <- data %>%
-
+        
         # calculates percentages (based on "known" values in denominator)
         mutate(measure_value = if_else(!grepl("unknown", measure_cat) &
                                          !grepl("total", measure_cat),
@@ -139,20 +123,17 @@ counts <-
                num = NA,
                den = NA)
     }
-
+    
     data <- data %>%
-
+      
       # add variables to the dataframe
-
+      
       mutate(
         suffix = if_else(suffix == "", NA, suffix),
         measure = measure) %>%
-        # key_measure_cat = measure_cat == key_measure_cat,
-        # key_measure_ref = if_else(key_measure_cat == TRUE, key, NA),
-        # key_measure_label = if_else(key_measure_cat == TRUE, key_measure_label, NA)) %>%
       rename(subgroup_cat = {{subgroup}}) |> 
       ungroup()
-
+    
     if(!is.null(name)) data$subgroup = as.character(name)
     
     return(data)
@@ -192,7 +173,7 @@ counts <-
 # Function to calculate the median of the measure variable over the pre-pandemic period
 # Parameters:
 # dataset: the name of the input dataframe
-# date: date
+# date: the name of the date variable, default = date
 # subgroup: name of a subgroup (e.g. SIMD, gestation_group), default is NULL = no subgroup
 # measure_value: fixed (is the measure_value in every dataframe)
 
@@ -210,7 +191,7 @@ calculate_medians <- function(dataset, date = date, subgroup_cat = NULL, measure
          )
   
   # extended is used to compare measure_value to the median in the runchart_flags code
-  # extended is then reset to NA where median exists (except for changeover point) to prevent double-plotting
+  # extended will be reset to NA where median exists (except for changeover point) to prevent double-plotting
   # the lines
   
   # fill-down median_name to ensure shifts are split in the correct places

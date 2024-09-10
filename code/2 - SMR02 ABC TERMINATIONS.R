@@ -929,6 +929,7 @@ runchart_dataframe <- add_split_gaps(
 
 # reset "extended" values to NA where "median" values exist (bar last "median" value)
 # stops "extended" over plotting "median" which looks rubbish
+# resets "extended" to NA when it is the last data point but still in the "median" period
 
 runchart_dataframe <- runchart_dataframe |>
   group_by(dataset, hbtype, hbname, period, measure, measure_cat, median_name) |> 
