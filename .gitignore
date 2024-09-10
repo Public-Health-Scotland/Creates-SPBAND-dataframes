@@ -10,6 +10,9 @@ data/
 *.[cC][sS][vV]
 *.[tT][xX][tT]
 
+# 'html' files
+*.[hH][tT][mM][lL]
+
 # Excel files #
 *.[xX][lL][sS][xXmMtT]?
 

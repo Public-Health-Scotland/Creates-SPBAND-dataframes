@@ -79,7 +79,6 @@ bookings_raw <-
   readRDS(ABC_filename) %>%
   filter(chi != "" & hbt != "E") %>% # exclude cases booked in England
   arrange(mothersfirstforename, motherssurname, mothers_dob) %>% 
-  # tibble::rowid_to_column() %>%
   mutate(dataset = "ABC",
          date = ymd(booking_date),
          gestation_at_booking = na_if(gestation_at_booking, 99)) %>% 
@@ -88,6 +87,8 @@ bookings_raw <-
 
 bookings_raw <- bookings_raw %>%
   mutate(gestation = if_else(gestation < 2 | gestation > 44, NA_real_, gestation))
+
+         # AGE = if_else(AGE < 10 | AGE > 55, NA_real_, AGE))
 
 ### 2c - Terminations data from .rds version ----
 # ensure the correct file is initialised in the housekeeping code!
@@ -139,17 +140,27 @@ analysis_raw <- bind_rows(scotland, analysis_raw)
 # rm(scotland)
 
 ### 5 - Create useful date parameters ----
-         
+
 analysis_raw <- analysis_raw %>% 
   mutate(fin_year = extract_fin_year(date),
          calendar_year = format(ymd(date), "%Y"),
          month_beginning = floor_date(date, unit = "month"),
          quarter = as.Date(as.yearqtr(date)) # quarter beginning
-         ) %>% 
+         # median_period_M = case_when(
+         #   month_beginning <= "2020-02-01" ~ 0,
+         #   between(month_beginning, as.Date("2022-07-01"), as.Date("2024-06-01")) & dataset == "ABC" ~ 2,
+         #   .default = NA
+         #   ),
+         # median_period_Q = if_else(date <= "2019-12-31", 0, NA)
+  ) |> 
+         # pre_pan_date_M = if_else(pre_pan_M == TRUE, as.Date("2020-02-29"),
+         #                          month_beginning), 
+         # pre_pan_date_Q = if_else(pre_pan_Q == TRUE, as.Date("2019-12-31"),
+         #                          quarter)) %>% 
   select(dataset, date, fin_year:quarter, hbrcode,
          hbrname, hbtcode, hbtname, outcome, outcome_name, type_of_birth, type_of_birth_name, induced,
          apgar5, tears, gestation)
-         
+
 ### 6 - Create summary tables for checking denominators ----
 
 births_summary <- filter(analysis_raw, dataset == "SMR02") %>%
@@ -275,26 +286,31 @@ rm(analysis_R, analysis_T)
 # create MONTHLY FILE - set date to month_beginning etc. date is a character to allow FY and CY formats
 # e.g. 2020/21 and 2022
 
-analysis_M <-
-  filter(analysis_both, dataset != "SMR02") %>% # only need Q for SMR02 measures
+analysis_M <- filter(analysis_both, dataset != "SMR02") %>% # only need Q for SMR02 measures
+  # rename(pre_pan = pre_pan_M) %>% 
+  # select(- pre_pan_Q) %>% 
   mutate(period = "M",
          date = as.character(month_beginning))
 
 # create QUARTERLY FILE - set date to quarter
 
 analysis_Q <- filter(analysis_both, dataset =="SMR02") %>% 
+  # rename(pre_pan = pre_pan_Q) %>% 
+  # select(- c(pre_pan_M, post_pan)) %>% 
   mutate(period = "Q",
          date = as.character(quarter))
 
 # create FINANCIAL YEAR FILE - set date to fin_year
 
 analysis_FY <- analysis_both %>% 
+  # select(!contains("pan")) %>% 
   mutate(period = "FY",
          date = as.character(fin_year))
 
 # create CALENDAR YEAR FILE - set date to calendar_year
 
 analysis_CY <- analysis_both %>% 
+  # select(!contains("pan")) %>% 
   mutate(period = "CY",
          date = as.character(calendar_year))
 
@@ -315,38 +331,30 @@ rm(analysis_both, analysis_M, analysis_Q, analysis_FY, analysis_CY)
 
 # remove data that will be incomplete using cut off dates
 
-births <- filter(analysis_ALL,
-                 dataset == "SMR02",
-                 month_beginning <= cut_off_date) |>
-  mutate(median_name = if_else(date <= "2019-12-31" &
-                                 period == "Q", "pre-pandemic median", NA)) |>  # pre-pandemic median only (for now)
+births <- filter(analysis_ALL, dataset == "SMR02",
+                 month_beginning <= cut_off_date) |> 
+  mutate(median_name = if_else(date <= "2019-12-31" & period == "Q", "median", NA)) |>  # pre-pan
   janitor::remove_empty("cols")
 
-bookings_terminations <-
-  bind_rows(
-    filter(
-      analysis_ALL,
-      dataset == "ABC" &
-        month_beginning <= cut_off_date_ABC
-    ),
-    filter(
-      analysis_ALL,
-      dataset == "TERMINATIONS" &
-        month_beginning <= cut_off_date
-    )
-  ) %>%
-  mutate(
-    median_name = case_when(
-      month_beginning <= "2020-02-01" & period == "M" ~ "pre-pandemic median",
-      between(
-        month_beginning,
-        as.Date("2022-07-01"),
-        as.Date("2024-06-01")
-      ) & period == "M" ~ "post-pandemic median",
-      .default = NA
-    )
-  ) |>
+bookings_terminations <- bind_rows(filter(analysis_ALL, dataset == "ABC" &
+                                            month_beginning <= cut_off_date_ABC),
+                                   filter(analysis_ALL, dataset == "TERMINATIONS" &
+                                            month_beginning <= cut_off_date)
+) |> 
+  mutate(median_name = case_when(
+    month_beginning <= "2020-02-01" & period == "M" ~ "median",
+    between(month_beginning, as.Date("2022-07-01"), as.Date("2024-06-01")) & period == "M" ~ "post-pandemic median",
+    .default = NA
+  )
+  ) |> 
   janitor::remove_empty("cols")
+
+# bookings_terminations$median_name <- factor(bookings_terminations$median_name,
+#                                             levels = c(0, 1, 2),
+#                                             labels = c("median", # to Oct-Dec 2019 / to end Feb 2020
+#                                                        "revised median", # FV/TAY (Gestation at booking)
+#                                                        "post-pandemic median") # from Jul 2022 to end Jun 2024
+# )
 
 # rm(analysis_raw, analysis_ALL) # tidy up
 
@@ -587,6 +595,133 @@ bookings_terminations <- bookings_terminations %>%
                           "NHS Orkney, NHS Shetland and NHS Western Isles", hbname)
          ) 
 
+counts <- 
+  function(dataset = births, variable, median_name, 
+           subgroup = NULL, tally_var = births, suffix, measure){ 
+    
+    # key, key_measure_cat, key_measure_label){
+    
+    name <- substitute(subgroup)
+    #print(name)
+    
+    data <- filter({{dataset}}, !is.na({{variable}})) # selects and filters dataset (removes NAs)
+    
+    if({{measure}} == "TERMINATIONS") { # TERMINATIONS has no grouping variable
+      
+      data <- data %>% 
+        
+        # aggregates numerator (num)
+        
+        select(dataset, hbtype, hbname, median_name, date,
+               period, {{subgroup}},
+               {{tally_var}}) %>%
+        group_by(dataset, hbtype, hbname, date, period, median_name, {{subgroup}}) %>%
+        summarise(num = sum({{tally_var}})) %>% 
+        mutate(measure_cat = "total")
+      
+    } else {
+      
+    # 
+    # # if({{measure}} %in% c("BOOKINGS", "TERMINATIONS", "GESTATION AT BOOKING",
+    # #                          "GESTATION AT TERMINATION")) { # only shown monthly
+    # #   
+    # #   data <- filter(data, period != "Q") # removes quarterly data
+    # #     
+    # #   } else { 
+    # 
+    # # if({{measure}} != "TYPE OF BIRTH") { # only shown quarterly except TOB for MCQIC
+    # #     
+    # #     data <- filter(data, period != "M") # removes monthly data except for TYPE OF BIRTH
+    # #     }
+    # #   } ##### redundant
+    # 
+      data <- data %>%
+        
+        # aggregates numerator (num) over specified group
+        
+        select(dataset, hbtype, hbname, median_name, date,
+               period, {{subgroup}}, measure_cat := {{variable}}, {{tally_var}}) %>%
+        group_by(dataset, hbtype, hbname, date, period, median_name,
+                 {{subgroup}}, measure_cat) %>%
+        summarise(num = sum({{tally_var}}))
+      
+      
+      data <- data %>%
+        
+        # pivots numerators from measure_cat to calculate totals
+        
+        pivot_wider(names_from = measure_cat,
+                    names_prefix = "num_",
+                    values_from = num,
+                    values_fill = 0) %>%
+        mutate(`num_total` = sum(across(where(is.numeric))),
+               den = `num_total` - sum(if_any(contains("unknown"))),
+               `num_total exc. unknown` = den) %>%
+        relocate(`num_total exc. unknown`,
+                 .before = contains("unknown"))
+      
+      if({{measure}} == "TYPE OF BIRTH"){
+        
+        data <- data %>%
+          
+          # calculates "all" caesarean births
+          
+          mutate(`num_all caesarean births` =
+                   `num_planned caesarean births` +
+                   `num_unplanned caesarean births`) %>%
+          relocate(`num_all caesarean births`,
+                   .before = `num_planned caesarean births`)
+        
+      }
+        
+      data <- data %>%
+        
+        # pivots longer again
+        
+        pivot_longer(cols = starts_with("num_"),
+                     names_to = "measure_cat",
+                     names_prefix = "num_",
+                     values_to = "num")
+    }
+
+    if(!{{measure}} %in% c("BOOKINGS", "TERMINATIONS")) {
+      
+      data <- data %>%
+        
+        # calculates percentages (based on "known" values in denominator)
+        mutate(measure_value = if_else(!grepl("unknown", measure_cat) &
+                                         !grepl("total", measure_cat),
+                                       percentage(num, den),
+                                       NA_real_),
+               # sets "den" to NA for "unknown" and "total" values
+               den = if_else(!grepl("unknown", measure_cat) &
+                               !grepl("total", measure_cat),
+                             den, NA_real_)
+        )
+    } else {
+      data <- data %>%
+        mutate(measure_value = num, # for BOOKINGS AND TERMINATIONS where there is no percentage measure
+               num = NA,
+               den = NA)
+    }
+    
+    data <- data %>%
+      
+      # add variables to the dataframe
+      
+      mutate(
+        suffix = if_else(suffix == "", NA, suffix),
+        measure = measure) %>%
+        # key_measure_cat = measure_cat == key_measure_cat,
+        # key_measure_ref = if_else(key_measure_cat == TRUE, key, NA),
+        # key_measure_label = if_else(key_measure_cat == TRUE, key_measure_label, NA)) %>%
+      rename(subgroup_cat = {{subgroup}})
+    
+    if(!is.null(name)) data$subgroup = as.character(name)
+    
+    return(data)
+  }
+
 ### 11 - TABLES of counts, percentages, averages ----
 
 ### 11a - BIRTHS measures ----
@@ -689,6 +824,7 @@ bookings <- bookings %>%
   mutate(median_name = 
            if_else(median_name == "post-pandemic median", NA, median_name))
 
+
 terminations <- # function needs all categories but only produces the totals until disclosure ready
   counts(
     dataset = filter(bookings_terminations,
@@ -722,20 +858,20 @@ terminations <- terminations %>%
 # by HB - these are the points plotted on charts
 # CY/FY (multi-indicator overview) or M (individual measures)
 
-av_gestation <- bookings_terminations %>% 
+av_gestation <- bookings_terminations |> 
   mutate(measure_cat = "average gestation",
          measure = if_else(dataset == "ABC", 
                              "GESTATION AT BOOKING",
                              "GESTATION AT TERMINATION"),
-         suffix = " weeks") %>% 
+         suffix = " weeks") |> 
   select(- median_name)
 
-# mark "special" FV and TAY months - these need additional medians, shifts and trends
+# mark "special" FV and TAY months
 
 av_gestation <- av_gestation |> 
   mutate(median_name = 
            case_when(
-             month_beginning <= "2020-02-01" & period == "M" ~ "pre-pandemic median",
+             month_beginning <= "2020-02-01" & period == "M" ~ "median",
              between(month_beginning, as.Date("2022-07-01"), as.Date("2024-06-01")) & period == "M" ~ "post-pandemic median",
              dataset == "ABC" & period == "M" & 
                      ((hbname == "NHS Forth Valley" &
@@ -853,18 +989,18 @@ remaining_dataframe <- remaining_dataframe %>%
 
 # temporarily copy some data to check extended post-pandemic median 
 
-# temp <- filter(remaining_dataframe, between(date, as.Date("2020-02-01"), as.Date("2020-08-01")) &
-#                  period == "M" & measure %in% c("GESTATION AT BOOKING", "GESTATION AT TERMINATION")
-# ) |> 
-#   mutate(date = if_else(dataset == "ABC", 
-#                         date %m+% months(52),
-#                         date %m+% months(50)),
-#          median_name = if_else(date <= "2024-06-01", 
-#                                "post-pandemic median",
-#                                NA)
-#   )
-# 
-# remaining_dataframe <- bind_rows(remaining_dataframe, temp)
+temp <- filter(remaining_dataframe, between(date, as.Date("2020-02-01"), as.Date("2020-08-01")) &
+                 period == "M" & measure %in% c("GESTATION AT BOOKING", "GESTATION AT TERMINATION")
+) |> 
+  mutate(date = if_else(dataset == "ABC", 
+                        date %m+% months(52),
+                        date %m+% months(50)),
+         median_name = if_else(date <= "2024-06-01", 
+                               "post-pandemic median",
+                               NA)
+  )
+
+remaining_dataframe <- bind_rows(remaining_dataframe, temp)
 
 ### 12d - Create run chart data frame ----
 
@@ -874,8 +1010,8 @@ runchart_dataframe <- filter(remaining_dataframe, measure_cat %in% runchart_cate
 # set median_name as a factor to keep order
 
 runchart_dataframe$median_name <- factor(runchart_dataframe$median_name,
-                      levels = c("pre-pandemic median", "revised median", "post-pandemic median"),
-                      labels = c("pre-pandemic median", # to Oct-Dec 2019 / to end Feb 2020
+                      levels = c("median", "revised median", "post-pandemic median"),
+                      labels = c("median", # to Oct-Dec 2019 / to end Feb 2020
                                  "revised median", # FV/TAY (Gestation at booking)
                                  "post-pandemic median") # from Jul 2022 to end Jun 2024
                       ) 
@@ -884,13 +1020,163 @@ runchart_dataframe$median_name <- factor(runchart_dataframe$median_name,
 
 # calculate the MEDIAN of the measure_value variable over the relevant median_name - plotted as a solid line
 
-runchart_dataframe <- calculate_medians(dataset = runchart_dataframe,
-                                        measure_value = measure_value)
+runchart_dataframe <- runchart_dataframe |> 
+  group_by(dataset, hbtype, hbname, median_name, period, measure, measure_cat) |> 
+  mutate(median = if_else(!is.na(median_name),
+                          median(measure_value, na.rm = TRUE),
+                          NA), # solid line on chart
+         extended = median) |> 
+  ungroup(median_name) |> 
+  mutate(extended = na.locf(extended, na.rm = FALSE) # extended is the same as median - dotted line on chart
+         )
+
+# fill-down median_name to ensure shifts are split in the correct places
+
+runchart_dataframe <- runchart_dataframe |> 
+    group_by(dataset, hbtype, hbname, period, measure, measure_cat) %>%
+    arrange(date, .by_group = TRUE) %>%
+    mutate(median_name = na.locf(median_name, na.rm = FALSE)
+           )
 
 ### ii - Mark SHIFTS and TRENDS ----
 
 # compares measure_value with extended to determine shifts
 # compares consecutive measure_values to determine trends
+
+# Function to flag shifts and trends on run chart data
+# Parameters:
+# shift: the name for the new variable where shift is flagged
+# trend: the name for the new variable where trend is flagged
+# value: the name of the variable which contains the value being evaluated
+# median: the name of the variable which contains the median against which value is tested
+
+runchart_flags <- function(dataset, shift, trend, value, median) {
+  
+  dataset <- dataset %>%
+    mutate(
+      trend_i = tidytable::case_when(
+        ({{value}} > lag({{value}}, 1) & lag({{value}}, 1) > lag({{value}}, 2)
+         & lag({{value}}, 2) > lag({{value}}, 3)  & lag({{value}}, 3) > lag({{value}}, 4)) |
+          ({{value}} < lag({{value}}, 1) & lag({{value}}, 1) < lag({{value}}, 2)
+           & lag({{value}}, 2) < lag({{value}}, 3)  & lag({{value}}, 3) < lag({{value}}, 4)) ~ TRUE,
+        TRUE ~ FALSE),
+
+      trend = tidytable::case_when(
+        trend_i == TRUE | lead(trend_i, 1) == TRUE | lead(trend_i, 2) == TRUE
+        | lead(trend_i, 3) == TRUE | lead(trend_i, 4) == TRUE ~ TRUE,
+        TRUE ~ FALSE)
+    ) %>%
+
+    rename({{trend}}:=trend) %>%
+    select(- trend_i)
+  
+  # Two trends can sometimes run into each other. This can be problematic when
+  # they are plotted using lines.
+  #
+  # Two adjacent trends where one point is in both trends is fine (think data
+  # like \/) - the trend line should not be interrupted. But when the last point
+  # in one trend is adjacent to the first point in the next (think \|\) we don't
+  # want to connect both trend lines together.
+  #
+  # This code adds a column to the data that identifies the problematic cases,
+  # so the lines can be split in the plotting function.
+  #
+  # Problematic points are surrounded by other trend points and are in a section
+  # where the gradient changes sign twice in succession.
+  
+  dataset <-
+    dataset %>%
+
+    # For identifying two successive changes in gradient direction
+
+    mutate(gradient = sign({{value}} - lag({{value}})),
+           gradient_lag_change = lag(gradient) != gradient,
+           gradient_lead_change = lead(gradient) != gradient
+    ) %>%
+
+    # Need these to find whether point is in the middle of a trend
+
+    mutate(across(all_of(trend), ~lag(.x), .names = "trend_lag"),
+           across(all_of(trend), ~lead(.x), .names = "trend_lead")
+    ) %>%
+
+    # Set new column to TRUE when all conditions are met
+
+    mutate("{trend}.split" :=
+             if_else(gradient_lag_change + gradient_lead_change +
+                       .data[[trend]] + trend_lag + trend_lead == 5,
+                     TRUE, FALSE, missing = FALSE)
+    ) %>%
+
+    # Remove columns that are no longer needed
+
+    select(- all_of(c("gradient", "gradient_lag_change", "gradient_lead_change",
+                      "trend_lag", "trend_lead"))
+    )
+   
+# # Now calculate shifts (ensuring split medians, noted by median_period, are taken into account)
+
+  dataset <-
+    dataset %>%
+    group_by(median_name, .add = TRUE) %>%
+
+    mutate(
+      shift_i = tidytable::case_when(
+        (({{value}} > {{median}} & lag({{value}}, 1) > {{median}} &
+            lag({{value}}, 2) > {{median}} & lag({{value}}, 3) > {{median}} &
+            lag({{value}}, 4) > {{median}} & lag({{value}}, 5) > {{median}})
+         | ({{value}} < {{median}} & lag({{value}}, 1) < {{median}} &
+              lag({{value}}, 2) < {{median}} & lag({{value}}, 3) < {{median}} &
+              lag({{value}}, 4) < {{median}} & lag({{value}}, 5) < {{median}})) ~ TRUE,
+        TRUE ~ FALSE),
+
+      shift = tidytable::case_when(
+        shift_i == TRUE | lead(shift_i, 1) == TRUE | lead(shift_i, 2) == TRUE
+        | lead(shift_i, 3) == TRUE | lead(shift_i, 4) == TRUE
+        | lead(shift_i, 5) == TRUE  ~ TRUE,
+        TRUE ~ FALSE)
+    ) %>%
+
+    rename({{shift}}:=shift) %>%
+    select(- shift_i)
+
+# There is a similar issue for shifts. There can't be one point in two shifts,
+# but the last point in one can be adjacent to the first point in the next.
+# Again we don't want to connect the lines.
+#
+# Problematic points are surrounded by other shift points and are on the
+# opposite side of the median from the preceding point.
+
+  dataset <-
+    dataset %>%
+    ungroup(median_name) |> 
+
+    # Find whether sign has changed from preceding point
+
+    mutate(median_diff_sign = sign({{value}} - {{median}}),
+           sign_change = median_diff_sign != lag(median_diff_sign)
+    ) %>%
+
+    # Need these to find whether point is in the middle of a shift
+
+    mutate(across(all_of(shift), ~lag(.x), .names = "shift_lag"),
+           across(all_of(shift), ~lead(.x), .names = "shift_lead")
+    ) %>%
+
+    # Set new column to TRUE when all conditions are met
+
+    mutate("{shift}.split" := 
+             if_else(sign_change + .data[[shift]] +
+                       shift_lag + shift_lead == 4,
+                     TRUE, FALSE, missing = FALSE)
+    ) %>%
+
+    # Remove columns that are no longer needed
+
+    select(- all_of(c("median_diff_sign", "sign_change",
+                      "shift_lag", "shift_lead"))
+    )
+}
 
 runchart_dataframe <- runchart_flags(
   dataset = runchart_dataframe,
@@ -927,19 +1213,14 @@ runchart_dataframe <- add_split_gaps(
   split_col_prefix = "orig_shift") %>% 
   rename(., c("shift_num_rows" = "num_rows", "shift_dup_row" = "dup_row"))
 
-# reset "extended" values to NA where "median" values exist (bar last "median" value)
-# stops "extended" over plotting "median" which looks rubbish
-# resets "extended" to NA when it is the last data point but still in the "median" period
+# reset extended values to NA where median values exist (bar last median value)
 
 runchart_dataframe <- runchart_dataframe |>
   group_by(dataset, hbtype, hbname, period, measure, measure_cat, median_name) |> 
   mutate(extended = if_else(
     !is.na(median) & !is.na(extended) & is.na(lead(median)),
     median, NA),
-    extended = na.locf(extended, na.rm = FALSE),
-    extended = if_else(median_name == "post-pandemic median" & date < as.Date("2024-06-01"),
-                       NA,
-                       extended)
+    extended = na.locf(extended, na.rm = FALSE)
     )
 
 # pivot wider to split median and extended into separate columns based on median_name
@@ -965,8 +1246,8 @@ runchart_dataframe <- runchart_dataframe |>
 
 medians <- runchart_dataframe %>% 
   ungroup() %>% 
-  select(dataset:measure_cat, pre_pandemic_median:extended_post_pandemic_median) |> 
-  mutate(across(c(pre_pandemic_median:extended_post_pandemic_median), ~ round(., 2))) |> 
+  select(dataset:measure_cat, median:extended_post_pandemic_median) |> 
+  mutate(across(c(median:extended_post_pandemic_median), ~ round(., 2))) |> 
   distinct() # removes duplicates created to split shifts and trends
 
 ### iii - Tidy up ----
@@ -980,10 +1261,11 @@ runchart_dataframe <- runchart_dataframe %>%
          quarter_label = factor(quarter_label,
                                 levels = x_date_labels_Q2,
                                 ordered = TRUE),
-         across(c(measure_value, pre_pandemic_median:extended_post_pandemic_median, trend, shift), ~ round(., 3)),
+         across(c(measure_value, median:extended_post_pandemic_median, trend, shift), ~ round(., 3)),
          num = if_else(measure %in% c("BOOKINGS", "TERMINATIONS"), NA, num)
   ) %>%
-  select(dataset, measure, hbtype, hbname, period, date, quarter_label, measure_cat:suffix, pre_pandemic_median:extended_post_pandemic_median, trend, shift, 
+  select(dataset, measure, hbtype, hbname, period, date, quarter_label, measure_cat:suffix, median:extended_post_pandemic_median, trend, shift, 
+           #ends_with(c("num_rows", "dup_row"))
          ) %>% 
   ungroup()
 
@@ -1003,7 +1285,7 @@ download_dataframe <- left_join(
          #hbname = str_remove(hbname, "[*]")
          ) %>% 
   arrange(dataset, measure, hbtype, hbname, period, date, date_label) |> 
-  select(dataset, measure, hbtype, hbname, period, date, date_label, measure_cat, num, den, measure_value,  suffix, plotted_on_charts, pre_pandemic_median:extended_post_pandemic_median, shown_on_MIO)
+  select(dataset, measure, hbtype, hbname, period, date, date_label, measure_cat, num, den, measure_value,  suffix, plotted_on_charts, median:extended_post_pandemic_median, shown_on_MIO)
 
 download_dataframe <- download_dataframe %>% 
   split(.$measure) 
@@ -1011,8 +1293,8 @@ download_dataframe <- download_dataframe %>%
 # remove empty columns
 
 for (i in seq_along(download_dataframe)) {
-
-  download_dataframe[[i]] <-
+  
+  download_dataframe[[i]] <- 
     janitor::remove_empty(download_dataframe[[i]], which = c("cols"), quiet = TRUE)
 }
 
@@ -1024,6 +1306,7 @@ download_dataframe[["GESTATION AT BIRTH"]]$measure_cat <-
                     "between 32 and 36 weeks (inclusive)",
                     "under 37 weeks",
                     "between 37 and 41 weeks (inclusive)",
+                    #"between 37 and 42 weeks",
                     "42 weeks and over (inclusive)",
                     "between 18 and 44 weeks (inclusive)",
                     "unknown gestation",
@@ -1039,9 +1322,11 @@ saveRDS(download_dataframe, paste0(data_path, "/", "download_dataframe.rds"))
 ### 13 - Save data for SPBAND ----
 
 save(annual_dataframe, 
+     #download_dataframe,
      runchart_dataframe,
      factor_labels_year,
   file = paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations.RData")
 )
 
 ### - END OF SCRIPT ----
+

@@ -11,21 +11,16 @@ percentage  <- function(x, y, na.rm = TRUE) {
 # Parameters:
 # dataset: defaults to births (can be modified)
 # variable: name of the variable to be counted
-# pre_pan: used if counting pre-pandemic values only (set to NULL otherwise)
-# pre_pan_date: used if counting pre-pandemic values only (set to NULL otherwise)
-# subgroup: name of a subgroup (e.g. SIMD), default is NULL = no subgroup
-# tally_var: name of the denominator variable (defaults to births)
+# date: the name of the date variable, default = date
+# median_name: the name of the median period to calculate the median over
+# subgroup: name of a subgroup (e.g. SIMD, gestation_group), default is NULL = no subgroup
+# tally_var: name of the denominator variable, default = births
 # suffix: a character describing the nature of the measure (e.g. "%")
 # measure: the name of the measure (e.g. "GESTATION AT BIRTH")
-# key: the name of the key (e.g. "B1") - relates to the multi indicator overview display order
-# key_measure_cat: the name of the "key" measure_cat (e.g. "induced") - relates to the multi indicator overview display
-# key_measure_label: the text to be shown in the multi indicator overview chart/table
 
 counts <- 
-  function(dataset = births, variable, pre_pan = pre_pan, pre_pan_date = pre_pan_date,
+  function(dataset = births, variable, date = date, median_name, 
            subgroup = NULL, tally_var = births, suffix, measure){ 
-    
-    # key, key_measure_cat, key_measure_label){
     
     name <- substitute(subgroup)
     #print(name)
@@ -38,40 +33,24 @@ counts <-
         
         # aggregates numerator (num)
         
-        select(dataset, hbtype, hbname, {{pre_pan}}, {{pre_pan_date}}, date,
+        select(dataset, hbtype, hbname, median_name, {{date}},
                period, {{subgroup}},
                {{tally_var}}) %>%
-        group_by(dataset, hbtype, hbname, date, period, {{pre_pan}}, {{pre_pan_date}},
-                 {{subgroup}}) %>%
+        group_by(dataset, hbtype, hbname, {{date}}, period, median_name, {{subgroup}}) %>%
         summarise(num = sum({{tally_var}})) %>% 
         mutate(measure_cat = "total")
       
     } else {
       
-    # 
-    # # if({{measure}} %in% c("BOOKINGS", "TERMINATIONS", "GESTATION AT BOOKING",
-    # #                          "GESTATION AT TERMINATION")) { # only shown monthly
-    # #   
-    # #   data <- filter(data, period != "Q") # removes quarterly data
-    # #     
-    # #   } else { 
-    # 
-    # # if({{measure}} != "TYPE OF BIRTH") { # only shown quarterly except TOB for MCQIC
-    # #     
-    # #     data <- filter(data, period != "M") # removes monthly data except for TYPE OF BIRTH
-    # #     }
-    # #   } ##### redundant
-    # 
       data <- data %>%
         
         # aggregates numerator (num) over specified group
         
-        select(dataset, hbtype, hbname, {{pre_pan}}, {{pre_pan_date}}, date,
+        select(dataset, hbtype, hbname, median_name, {{date}},
                period, {{subgroup}}, measure_cat := {{variable}}, {{tally_var}}) %>%
-        group_by(dataset, hbtype, hbname, date, period, {{pre_pan}}, {{pre_pan_date}},
+        group_by(dataset, hbtype, hbname, {{date}}, period, median_name,
                  {{subgroup}}, measure_cat) %>%
         summarise(num = sum({{tally_var}}))
-      
       
       data <- data %>%
         
@@ -80,12 +59,25 @@ counts <-
         pivot_wider(names_from = measure_cat,
                     names_prefix = "num_",
                     values_from = num,
-                    values_fill = 0) %>%
+                    values_fill = 0
+        ) %>%
         mutate(`num_total` = sum(across(where(is.numeric))),
-               den = `num_total` - sum(if_any(contains("unknown"))),
-               `num_total exc. unknown` = den) %>%
+               den = `num_total` - sum(across(contains("unknown"))), # den only includes "known" values - but this does include "other" gestations
+               flag = sum(across(contains("unknown"))) == 0, # if there is no "unknown" column flag = TRUE
+               `num_total exc. unknown` = den,
+        ) %>%
         relocate(`num_total exc. unknown`,
-                 .before = contains("unknown"))
+                 .before = contains("unknown")
+        )
+      
+      if(sum(data$flag == 0)) { # i.e. there are no valid "unknowns"
+        
+        data <- select(data, - flag)
+        
+      } else {
+        
+        data <- select(data, -c(`num_total exc. unknown`, flag))
+      }
       
       if({{measure}} == "TYPE OF BIRTH"){
         
@@ -100,7 +92,7 @@ counts <-
                    .before = `num_planned caesarean births`)
         
       }
-        
+      
       data <- data %>%
         
         # pivots longer again
@@ -110,7 +102,7 @@ counts <-
                      names_prefix = "num_",
                      values_to = "num")
     }
-
+    
     if(!{{measure}} %in% c("BOOKINGS", "TERMINATIONS")) {
       
       data <- data %>%
@@ -139,10 +131,8 @@ counts <-
       mutate(
         suffix = if_else(suffix == "", NA, suffix),
         measure = measure) %>%
-        # key_measure_cat = measure_cat == key_measure_cat,
-        # key_measure_ref = if_else(key_measure_cat == TRUE, key, NA),
-        # key_measure_label = if_else(key_measure_cat == TRUE, key_measure_label, NA)) %>%
-      rename(subgroup_cat = {{subgroup}})
+      rename(subgroup_cat = {{subgroup}}) |> 
+      ungroup()
     
     if(!is.null(name)) data$subgroup = as.character(name)
     
@@ -183,21 +173,35 @@ counts <-
 # Function to calculate the median of the measure variable over the pre-pandemic period
 # Parameters:
 # dataset: the name of the input dataframe
+# date: the name of the date variable, default = date
+# subgroup: name of a subgroup (e.g. SIMD, gestation_group), default is NULL = no subgroup
 # measure_value: fixed (is the measure_value in every dataframe)
 
-calculate_medians <- function(dataset, measure_value){
+calculate_medians <- function(dataset, date = date, subgroup_cat = NULL, measure_value){ 
   
-  data <- {{dataset}} %>% 
-    group_by(dataset, hbtype, hbname, pre_pan, period, measure, measure_cat) %>% # PRE-PANDEMIC period
-    mutate(median =
-             unique(if_else(pre_pan == TRUE,
+  data <- {{dataset}} |>  
+    group_by(dataset, hbtype, hbname, median_name, period, measure, measure_cat, {{subgroup_cat}}) |>  # over different median periods
+    mutate(median = if_else(!is.na(median_name),
                             median({{measure_value}}, na.rm = TRUE), 
-                            NA_real_))) %>% # median of measure_value - solid blue line
-    group_by(dataset, hbtype, hbname, period, measure, measure_cat) %>%
-    arrange(pre_pan_date, .by_group = TRUE) %>%
-    mutate(extended = median,
-           extended = na.locf(extended, na.rm = FALSE)) # extended is the same as median - dotted blue line
+                            NA), # median of measure_value - solid line on chart
+           extended = median # extended median - dotted line on chart
+           ) |> 
+  ungroup(median_name) |> 
+  mutate(extended = na.locf(extended, na.rm = FALSE) # extended is the same as median - dotted line on chart
+         )
   
+  # extended is used to compare measure_value to the median in the runchart_flags code
+  # extended will be reset to NA where median exists (except for changeover point) to prevent double-plotting
+  # the lines
+  
+  # fill-down median_name to ensure shifts are split in the correct places
+  
+  data <- data |>
+    #group_by(dataset, hbtype, hbname, period, measure, measure_cat) %>%
+    arrange({{date}}, .by_group = TRUE) %>%
+    mutate(median_name = na.locf(median_name, na.rm = FALSE)
+    )
+
   return(data)
   
 }
@@ -273,11 +277,11 @@ runchart_flags <- function(dataset, shift, trend, value, median) {
                       "trend_lag", "trend_lead"))
     )
    
-# # Now calculate shifts (ensuring split medians, noted by flag, are taken into account)
+# # Now calculate shifts (ensuring split medians, noted by median_period, are taken into account)
 
   dataset <-
     dataset %>%
-    group_by(flag, .add = TRUE) %>%
+    group_by(median_name, .add = TRUE) %>%
 
     mutate(
       shift_i = tidytable::case_when(
@@ -308,6 +312,7 @@ runchart_flags <- function(dataset, shift, trend, value, median) {
 
   dataset <-
     dataset %>%
+    ungroup(median_name) |> 
 
     # Find whether sign has changed from preceding point
 
@@ -323,7 +328,7 @@ runchart_flags <- function(dataset, shift, trend, value, median) {
 
     # Set new column to TRUE when all conditions are met
 
-    mutate("{shift}.split" :=
+    mutate("{shift}.split" := 
              if_else(sign_change + .data[[shift]] +
                        shift_lag + shift_lead == 4,
                      TRUE, FALSE, missing = FALSE)

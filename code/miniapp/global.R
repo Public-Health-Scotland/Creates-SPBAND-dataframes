@@ -80,7 +80,7 @@ pretty_refresh_date <- format(refresh_date,"%d %B %Y")
 
 # latest NRS publication date
 
-NRS_published_date <- "12 March 2024"
+NRS_published_date <- "11 June 2024"
 
 # folder for Excel downloads
 
