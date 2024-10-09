@@ -127,6 +127,10 @@ preterm <- preterm %>%
     all_22_26 = 1
   )
 
+preterm$date_label = factor(preterm$date_label,
+                            levels = unique(preterm$date_label),
+                            ordered = TRUE)
+
 # useful if trying things out - no risk of refreshed data 
 
 saveRDS(preterm, paste0(data_path, "/", "raw_preterm.rds"))  
@@ -380,6 +384,49 @@ extremely_preterm_context_chart <-
                     )
 
 extremely_preterm_context_chart 
+
+
+# 6 ---- extract details of the location of non-NICU births (and admission/discharge info)
+
+preterm <- readRDS(paste0(data_path, "/", "raw_preterm.rds"))
+
+# temporary - should be saved in next version #
+
+preterm$date_label = factor(preterm$date_label,
+                            levels = unique(preterm$date_label),
+                            ordered = TRUE)
+
+non_NICU_preterm <- preterm %>% 
+  filter(excluded_from_NICU_22_26 == 1) %>% 
+  select(c("date_of_delivery", "discharge_date", "estimated_gestation", "location",
+           "condition_on_discharge", "num_of_births_this_pregnancy", 
+           "outcome_of_pregnancy_baby_1", "outcome_of_pregnancy_baby_2", 
+           "outcome_of_pregnancy_baby_3", "admission_reason", "admission_transfer_from", 
+           "admission_type", "discharge_type", "discharge_transfer_to",
+           "date", "date_label", "NICU", "NICU_22_26", "excluded_from_NICU_22_26", 
+           "all_22_26"))
+
+write.csv(non_NICU_preterm, row.names = FALSE,
+          file.path(data_path, paste0("non-NICU births at 22-26 weeks, ", 
+                                   max(non_NICU_preterm$date_label), ".csv"))
+          )
+
+summary <- preterm %>% 
+  group_by(date_label, admission_reason) %>%
+  pivot_wider(names_from = admission_reason,
+              values_from = all_22_26,
+              values_fill = 0) %>% 
+  reframe(`Born at NICU` = sum(NICU_22_26),
+          `24 (Born before arrival)` = sum(`24`),
+          `25 (Born at home)` = sum(`25`),
+          `26 (Admitted after delivery in another hospital)` = sum(`26`),
+          `All births at 22-26 weeks` = n()
+  )
+
+write.csv(summary, row.names = FALSE,
+          file.path(data_path, paste0("summary of births at 22-26 weeks, ", 
+                                   max(summary$date_label), ".csv"))
+          )
 
 ### - END OF SCRIPT ----
 

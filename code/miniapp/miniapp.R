@@ -159,7 +159,7 @@ home <- tabItem(
              
              fluidRow(
                
-               p(paste0("The data shown in this dashboard was extracted on ", pretty_refresh_date)
+               p(paste0("The data shown in this dashboard were extracted on ", pretty_refresh_date)
                ),
                
                p("The Excel downloads are: "),
@@ -675,20 +675,12 @@ gestation_at_booking <- tabItem(
                       column(12,
                              loading(
                                plotlyOutput("gest_at_booking_runcharts",
-                                            height = "30em"
+                                            height = "35em"
                                )
                              ),
                              
                              br()
                              
-                      ),
-                      
-                      column(12,
-                             uiOutput("correction") %>%
-                               tagAppendAttributes(style = "font-size:14px;
-                                                   text-align: left;"),
-                             
-                             br()
                       ),
 
                       column(12,
@@ -726,7 +718,18 @@ gestation_at_booking <- tabItem(
                              p("The black dots connected by a line in the chart above show the average (mean) gestation at which women booked for their antenatal care (based on gestation at booking measured in completed weeks of pregnancy), for each month, from Apr 2019 onwards."
                              ),
                              
-                             p("To provide a basis for identifying patterns in the data, a blue line shows the overall average (median) of the mean gestation at booking each month over the period Apr 2019 to Feb 2020 inclusive (the period before the COVID-19 pandemic in Scotland). The blue line is dashed where the average is projected outside that time range."
+                             p("To provide a basis for identifying patterns in the data:",
+                               
+                               tags$ul(
+                                 tags$li(class= "bullet-points",
+                                         "A blue line shows the overall average (median) of the mean gestation at booking each month over the period Apr 2019 to Feb 2020 inclusive (the period before the COVID-19 pandemic in Scotland). The blue line is dashed where the average is projected outside that time range."
+                                 ),
+                                 uiOutput("gest_at_booking_footnote"
+                                 ),
+                                 tags$li(class= "bullet-points",
+                                         "A magenta line shows a post-pandemic median - the overall average (median) of the mean gestation at booking each month in the two-year post-pandemic period (from July 2022 to June 2024).  The magenta line is dashed where the post-pandemic average is projected outside that time range."
+                                 ),
+                               )
                              ),
                              
                              p("The black line becomes yellow where there are 6 or more consecutive points above or below the average and is highlighted in green where there are 5 or more consecutively increasing or decreasing points."
@@ -2565,17 +2568,21 @@ server <- function(input, output, session) {
                                     striped = TRUE,
                                     bordered = TRUE)
   
-  # deals with correction to Gestation at Booking for FV and Tayside
+# footnote text for Forth Valley and Tayside revised medians in Gestation at booking measure
   
-  url <- a("phs.matneodatahub@phs.scot", href="mailto:phs.matneodatahub@phs.scot")
+gest_at_booking_revised_median_text <-  # was gest_at_booking_correction_text
 
-  output$correction <- renderUI({
-    tagList(gest_at_booking_correction_text, url)
+  tags$li(class= "bullet-points",
+          "A green line shows a revised overall average (median) of the mean gestation at booking each month during a period after changes were made to the process for recording booking. The green line is dashed where the revised average is projected outside that time range."
+  )
+
+  output$gest_at_booking_footnote <- renderUI({
+    tagList(gest_at_booking_revised_median_text)
   })
-  
+
   observeEvent(input$hbname,
-               
-               toggleElement(id = "correction", 
+
+               toggleElement(id = "gest_at_booking_footnote",
                              condition = input$hbname %in% c("NHS Forth Valley", "NHS Tayside"))
   )
   

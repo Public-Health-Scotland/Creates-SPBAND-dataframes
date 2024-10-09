@@ -676,12 +676,12 @@ bookings <-
 
 # remove gestation breakdowns for Island Boards and financial/calendar year values as they aren't used
 
-bookings <- bookings %>%
-  mutate(measure_value = 
-           if_else(hbname %in% island_boards &
-                     measure_cat != "all pregnancies booked", NA, measure_value)) %>% 
-  filter(!is.na(measure_value) & !period %in% c("CY", "FY")
-         )
+# bookings <- bookings %>%
+#   mutate(measure_value = 
+#            if_else(hbname %in% island_boards &
+#                      measure_cat != "all pregnancies booked", NA, measure_value)) %>% 
+#   filter(!is.na(measure_value) & !period %in% c("CY", "FY")
+#          )
 
 # remove post-pandemic median category (not needed for this measure)
 
@@ -692,24 +692,24 @@ bookings <- bookings %>%
 terminations <- # function needs all categories but only produces the totals until disclosure ready
   counts(
     dataset = filter(bookings_terminations,
-                     dataset == "TERMINATIONS" & 
-                       hbname != "NHS Orkney, NHS Shetland and NHS Western Isles"),
+                     dataset == "TERMINATIONS"),  #& 
+                       #hbname != "NHS Orkney, NHS Shetland and NHS Western Isles"),
     variable = gest_grp3, # not used but needed for function
     tally_var = count,
     suffix = "", # for hovertext
     measure = "TERMINATIONS"
     ) %>% 
-  mutate(measure_value = 
-           if_else(measure_cat == "total" & measure_value < 5, NA, measure_value), # disclosure control total 
+  mutate(#measure_value =
+  #          if_else(measure_cat == "total" & measure_value < 5, NA, measure_value), # disclosure control total 
          measure_cat = 
            if_else(measure_cat == "total", "all terminations", measure_cat)
   )
 
 # remove financial/calendar year values as they aren't used
 
-terminations <- terminations %>%
-  filter(!period %in% c("CY", "FY")
-         )
+# terminations <- terminations %>%
+#   filter(!period %in% c("CY", "FY")
+#          )
 
 # remove post-pandemic median category (not needed for this measure)
 
@@ -750,7 +750,12 @@ av_gestation <- av_gestation |>
 
 av_gestation <- av_gestation |>  
   group_by(dataset, hbtype, hbname, date, period, median_name, measure, measure_cat, suffix) %>% 
-  summarise(measure_value = mean(gestation, na.rm = TRUE))
+  mutate(count = if_else(is.na(gestation), 0, 1)
+         ) |> 
+  summarise(measure_value = mean(gestation, na.rm = TRUE),
+            sd = sd(gestation, na.rm = TRUE), # for X_bar chart
+            den = sum(count) # den = total exc. unknown (gestations)
+            )
 
 ### 12 - Create data frames to be used in SPBAND ----
 
@@ -763,8 +768,7 @@ everything_dataframe <- bind_rows(inductions,
                                   gestation,
                                   bookings,
                                   terminations,
-                                  av_gestation) %>% 
-  filter(hbname != "Unknown")
+                                  av_gestation) 
 
 # add on the num, den, measure_value metadata for the data download
 
@@ -803,18 +807,21 @@ x_date_labels_Q2 <-
 ### 12b - Create annual data frame - this doesn't need runcharts etc. ----
 
 annual_dataframe <- filter(everything_dataframe,
-                           period %in% c("CY", "FY") &
+                           hbname != "Unknown" &
+                             period %in% c("CY", "FY") &
                              date %in% factor_labels_year &
                              shown_on_MIO == "Y") %>% 
   janitor::remove_empty(., which = c("cols"), quiet = TRUE) %>%
   arrange(hbtype, hbname, MIO_measure_ref, period, date) %>% 
   group_by(MIO_measure_ref, measure, period, hbtype, date) %>% 
   mutate(
+    den = if_else(measure_cat == "average gestation", NA, den),
     measure_cat = case_match(measure,
                              "GESTATION AT BOOKING" ~ "average gestation at booking",
                              "GESTATION AT TERMINATION" ~ "average gestation at termination",
                              .default = measure_cat
-                             ),
+    ),
+    
     measure_value = round(measure_value, 2),
     MIN = min(measure_value, na.rm = TRUE),
     MAX = max(measure_value, na.rm = TRUE),
@@ -829,14 +836,14 @@ annual_dataframe <- filter(everything_dataframe,
   select(c(dataset, measure, hbtype, hbname, period, date, measure_cat, num, den, measure_value, suffix,
            MIO_measure_ref, MIO_measure_label, MIN, MAX, RANGE, RESCALED, MIN_RS, MAX_RS,
            plotlylabel)
-         )
+  )
 
 saveRDS(annual_dataframe, paste0(data_path, "/", "annual_dataframe.rds"))
 
 ### 12c - Save monthly and quarterly data - this will be used for download and runcharts ----
 
 remaining_dataframe <- filter(everything_dataframe,
-                           period %in% c("Q", "M")) %>% 
+                           period %in% c("Q", "M") & hbname !="Unknown") %>% 
   mutate(date = ymd(date)) %>%
   select("dataset", "hbtype", "hbname", "median_name", "period", "date", 
   "measure", "measure_cat", "num", "den", "measure_value", "suffix",
@@ -848,6 +855,24 @@ remaining_dataframe <- filter(everything_dataframe,
 
 remaining_dataframe <- remaining_dataframe %>% 
   mutate(drop = period == "Q" & date > cut_off_date_Qtrly) %>% 
+  filter(drop == FALSE) %>% 
+  select(- drop)
+
+# remove "NHS Orkney, NHS Shetland and NHS Western Isles" from Terminations measure
+# remove gestation breakdowns from TERMINATIONS measure for all Boards
+# remove gestation breakdowns from BOOKINGS measure for the Island Boards
+# reset Terminations measure_values < 5 to NA
+# reset GESTATION AT BOOKING/TERMINATION denominators to NA
+
+remaining_dataframe <- remaining_dataframe %>%                              
+  mutate(drop = (measure == "TERMINATIONS" & (hbname == "NHS Orkney, NHS Shetland and NHS Western Isles" | measure_cat != "all terminations")
+                 ) |
+           (measure == "BOOKINGS" & hbname %in% island_boards & measure_cat != "all pregnancies booked"
+                 ),
+         measure_value =
+           if_else(measure_cat == "all terminations" & measure_value < 5, NA, measure_value),
+         den = if_else(measure_cat == "average gestation", NA, den)
+  ) %>% 
   filter(drop == FALSE) %>% 
   select(- drop)
 

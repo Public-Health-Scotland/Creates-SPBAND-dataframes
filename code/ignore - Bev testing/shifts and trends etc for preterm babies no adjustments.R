@@ -1,7 +1,8 @@
-library(openxlsx2)
 library(janitor)
 
 source("code/1 - Housekeeping code to be updated each refresh.R")
+
+data_path <- here(paste0("data/2024-03-14 extract"))
 
 orig_trend_label <-  
   paste0("trends: 6 or more consistently increasing", "<br>", "or decreasing points")
@@ -10,8 +11,8 @@ orig_shift_label <-
 
 ### i - read in testdata ----
 
-testdata <- read_xlsx(paste0(data_path, "/extremely_preterm_2024-03-14.xlsx"),
-                      sheet = "Sheet3",
+testdata <- read.xlsx(paste0(data_path, "/extremely_preterm_2024-03-14.xlsx"),
+                      sheet = "as is",
                       rows = c(1:77),
                       cols = c(1:12)
 ) %>% 

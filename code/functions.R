@@ -27,20 +27,20 @@ counts <-
     
     data <- filter({{dataset}}, !is.na({{variable}})) # selects and filters dataset (removes NAs)
     
-    if({{measure}} == "TERMINATIONS") { # TERMINATIONS has no grouping variable
-      
-      data <- data %>% 
-        
-        # aggregates numerator (num)
-        
-        select(dataset, hbtype, hbname, median_name, {{date}},
-               period, {{subgroup}},
-               {{tally_var}}) %>%
-        group_by(dataset, hbtype, hbname, {{date}}, period, median_name, {{subgroup}}) %>%
-        summarise(num = sum({{tally_var}})) %>% 
-        mutate(measure_cat = "total")
-      
-    } else {
+    # if({{measure}} == "TERMINATIONS") { # TERMINATIONS has no grouping variable
+    # 
+    #   data <- data %>%
+    # 
+    #     # aggregates numerator (num)
+    # 
+    #     select(dataset, hbtype, hbname, median_name, {{date}},
+    #            period, {{subgroup}},
+    #            {{tally_var}}) %>%
+    #     group_by(dataset, hbtype, hbname, {{date}}, period, median_name, {{subgroup}}) %>%
+    #     summarise(num = sum({{tally_var}})) %>%
+    #     mutate(measure_cat = "total")
+    # 
+    # } else {
       
       data <- data %>%
         
@@ -101,7 +101,7 @@ counts <-
                      names_to = "measure_cat",
                      names_prefix = "num_",
                      values_to = "num")
-    }
+    #}
     
     if(!{{measure}} %in% c("BOOKINGS", "TERMINATIONS")) {
       
