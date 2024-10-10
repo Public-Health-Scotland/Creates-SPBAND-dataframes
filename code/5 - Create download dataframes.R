@@ -70,8 +70,6 @@ tidy_data_download <- function(measure_selection) {
     
     # delete unused columns
     
-    #         data <- data %>% 
-    
     select(-any_of(c("num_description", "den_description", "measure_value_description", "quarter_label", "use_for_mean", "measure_cat2", "MIO_measure_label", "MIO_measure_ref", "MIN", "MAX", "RANGE", "RESCALED", "MIN_RS", "MAX_RS", "plotlylabel")
     )
     )
@@ -99,10 +97,10 @@ tidy_data_download <- function(measure_selection) {
       rename(Suffix = suffix)
   }
   
-  if ("median" %in% names(data)) {
+  if ("pre_pandemic_median" %in% names(data)) {
     data <- data %>%
-      rename(Median = median,
-             `Extended median` = extended_median)
+      rename(`Median` = pre_pandemic_median,
+             `Extended median` = extended_pre_pandemic_median)
   }
   
   if ("revised_median" %in% names(data)) {
@@ -113,8 +111,13 @@ tidy_data_download <- function(measure_selection) {
   
   if ("post_pandemic_median" %in% names(data)) {
     data <- data %>%
-      rename(`Post-pandemic median` = post_pandemic_median,
-             `Extended post-pandemic median` = extended_post_pandemic_median)
+      rename(`Post-pandemic median` = post_pandemic_median)
+            # `Extended post-pandemic median` = extended_post_pandemic_median)
+  }
+  
+  if ("extended_post_pandemic_median" %in% names(data)) { # currently empty
+    data <- data %>%
+      rename(`Extended post-pandemic median` = extended_post_pandemic_median)
   }
   
   if ("mean" %in% names(data)) {
@@ -170,7 +173,7 @@ names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
     names(nice_download),
     c("tears",
       "gestation_at_termination") ~ 8,
-    "gestation_at_booking" ~ 11,
+    "gestation_at_booking" ~ 8,
     "type_of_birth" ~ 9,
     .default = 7
   )
