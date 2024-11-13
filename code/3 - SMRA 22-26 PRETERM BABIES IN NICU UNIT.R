@@ -1,17 +1,17 @@
-########################################################################################
+###
 # Location of extremely pre-term births, 22-26 weeks inclusive for the
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Sourced from SMRA SMR02
 # Bev Dodds
-# 12 December 2023
+# 13 November 2024
 # Last update by Bev Dodds
-# Latest update description: added code to pull in home births (v. unlikely)
+# Latest update description: removed admission reason = 26 (transfer after delivery in another hospital)
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on Posit Workbench
 # Version of R - 4.1.2
 # Reads in SMRA SMR02_PI live births and produces a variety of tables/charts 
 # Approximate run time - <5 minutes
-#######################################################################################
+###
 
 ### 1 - Housekeeping ----
 
@@ -77,7 +77,7 @@ mutate(date = ymd(discharge_date),
        hbname = "Scotland",
        measure = "EXTREMELY PRE-TERM BIRTHS"
        ) %>% 
-  filter(date <= cut_off_date_Qtrly &
+  filter(date <= cut_off_date_Qtrly & admission_reason != 26 &
            (outcome_of_pregnancy_baby_1 %in% c(1, 3, 4, 5) |
               outcome_of_pregnancy_baby_2 %in% c(1, 3, 4, 5) |
               outcome_of_pregnancy_baby_3 %in% c(1, 3, 4, 5))
@@ -103,12 +103,11 @@ preterm <- preterm %>%
     TRUE ~ 0)
   )
 
-# calculate numerator - mothers with extremely preterm deliveries in a location with a NICU who 
-# were not transferred in having given birth at home 
+# calculate numerator - mothers with extremely pre-term deliveries in a location with a NICU who 
+# were not transferred in having given birth at home or transferred after delivery in another hospital 
 # i.e. ADMISSION_TYPE != 41, ADMISSION_TRANSFER_FROM != 70, DISCHARGE_TYPE != 70, DISCHARGE_TRANSFER_TO != 70
 # AND who were not admitted having delivered elsewhere 
-# i.e. ADMISSION_REASON != 20 (not admitted - home birth), 24 (born before arrival), 25 (admitted after home birth), 
-# 26 (admitted after delivery in another hospital)
+# i.e. ADMISSION_REASON != 20 (not admitted - home birth), 24 (born before arrival), 25 (admitted after home birth), # as of Nov 2024 removed 26 (admitted after delivery in another hospital)
 # ADMISSION_TRANSFER_FROM_LOC is not used as it is not a mandatory item and so not populated
 # calculate denominator - all deliveries at between 22-26 weeks gestation
 
@@ -116,7 +115,7 @@ preterm <- preterm %>%
   mutate(
     NICU_22_26 = 1,
     excluded_from_NICU_22_26 = 
-      if_else(admission_reason %in% c("20", "24", "25", "26") | 
+      if_else(admission_reason %in% c("20", "24", "25") | # removed "26" (transfer where birth occurred in another hospital) as of January 2025 publication
                 admission_type == "41" | 
                 admission_transfer_from == "70" |
                 discharge_type == "70" |
@@ -407,7 +406,7 @@ non_NICU_preterm <- preterm %>%
            "all_22_26"))
 
 write.csv(non_NICU_preterm, row.names = FALSE,
-          file.path(data_path, paste0("non-NICU births at 22-26 weeks, ", 
+          file.path(data_path, paste0("non-NICU births at 22-26 weeks to ", 
                                    max(non_NICU_preterm$date_label), ".csv"))
           )
 
@@ -419,12 +418,12 @@ summary <- preterm %>%
   reframe(`Born at NICU` = sum(NICU_22_26),
           `24 (Born before arrival)` = sum(`24`),
           `25 (Born at home)` = sum(`25`),
-          `26 (Admitted after delivery in another hospital)` = sum(`26`),
+          #`26 (Admitted after delivery in another hospital)` = sum(`26`),
           `All births at 22-26 weeks` = n()
   )
 
 write.csv(summary, row.names = FALSE,
-          file.path(data_path, paste0("summary of births at 22-26 weeks, ", 
+          file.path(data_path, paste0("summary of births at 22-26 weeks to ", 
                                    max(summary$date_label), ".csv"))
           )
 
