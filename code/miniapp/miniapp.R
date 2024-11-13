@@ -120,7 +120,7 @@ topicmenu <- sidebarMenu(
                     #             tabName = "median_cga_30_32",
                     #             icon = shiny::icon("angle-double-right") %>% rem_aria_label()
                     # ),
-                    menuSubItem("Admissions to a neonatal unit by BAPM level of care",
+                    menuSubItem("Admissions to a neonatal unit by level of care",
                                 tabName = "gestation_by_BAPM_LOC",
                                 icon = shiny::icon("angle-double-right") %>% rem_aria_label()
                     )
@@ -1412,9 +1412,10 @@ type_of_birth <- tabItem(
                              )
                       ),
                       
-                      column(11,
+                      column(12,
                              loading(
-                               uiOutput("type_of_birth_runcharts"
+                               plotlyOutput("type_of_birth_runcharts",
+                                            height = "50em"
                                )
                              ),
                              
@@ -1843,7 +1844,8 @@ gestation_at_birth <- tabItem(
                       
                       column(12,
                              loading(
-                               uiOutput("gest_at_birth_runcharts"
+                               plotlyOutput("gest_at_birth_runcharts",
+                                           height = "50em"
                                )
                              ),
                              
@@ -2267,7 +2269,7 @@ gestation_by_BAPM_LOC <- tabItem(
   tabName = "gestation_by_BAPM_LOC",
   
   fluidRow(
-    tabBox(title = "Late pre-term and term/post-term admissions",
+    tabBox(title = "Admissions to a neonatal unit by level of care",
            
            # The id lets us use input$tabset28 on the server to find the current tab
            id = "tabset28",
@@ -2305,8 +2307,8 @@ gestation_by_BAPM_LOC <- tabItem(
                       
                       column(12,
                              loading(
-                               uiOutput("gestation_by_BAPM_LOC_runcharts",
-                                            height = "30em"
+                               plotlyOutput("gestation_by_BAPM_LOC_runcharts",
+                                            height = "50em"
                                )
                              ),
 
@@ -2591,7 +2593,7 @@ server <- function(input, output, session) {
   observeEvent(input$tabset25, Selected$Tabset <- input$tabset25)
   observeEvent(input$tabset26, Selected$Tabset <- input$tabset26)
   
-    observeEvent(input$tabset28, Selected$Tabset <- input$tabset28)
+  observeEvent(input$tabset28, Selected$Tabset <- input$tabset28)
 
     # observeEvent(input$tabset31, Selected$Tabset <- input$tabset31)  # testing whether can jump to a tabset
   
@@ -2820,75 +2822,75 @@ gest_at_booking_revised_median_text <-  # was gest_at_booking_correction_text
   
   # this section tells the app where to find the code for each tab
   
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Multi%20indicator%20overview/Multi%20indicator%20overview%20chart.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Multi%20indicator%20overview/Multi%20indicator%20overview%20chart.R", local = environment())
   
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Multi%20indicator%20overview/Multi%20indicator%20overview%20table.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Multi%20indicator%20overview/Multi%20indicator%20overview%20table.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Multi%20indicator%20overview/Multi%20indicator%20overview%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Multi%20indicator%20overview/Multi%20indicator%20overview%20download%20data.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Antenatal%20booking/Antenatal%20bookings%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Antenatal%20booking/Antenatal%20bookings%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Terminations/Terminations%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Terminations/Terminations%20runcharts.R", local = environment())
   
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Antenatal%20booking/Average%20gestation%20at%20booking%20small%20multiples.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Antenatal%20booking/Average%20gestation%20at%20booking%20small%20multiples.R", local = environment())
   
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Antenatal%20booking/Average%20gestation%20at%20booking%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Antenatal%20booking/Average%20gestation%20at%20booking%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Antenatal%20booking/Average%20gestation%20at%20booking%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Antenatal%20booking/Average%20gestation%20at%20booking%20download%20data.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Terminations/Average%20gestation%20at%20termination%20small%20multiples.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Terminations/Average%20gestation%20at%20termination%20small%20multiples.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Terminations/Average%20gestation%20at%20termination%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Terminations/Average%20gestation%20at%20termination%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Terminations/Average%20gestation%20at%20termination%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Terminations/Average%20gestation%20at%20termination%20download%20data.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Extremely%20preterm/Extremely%20preterm%20control%20chart.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Extremely%20preterm/Extremely%20preterm%20control%20chart.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Extremely%20preterm/Extremely%20preterm%20context%20chart.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Extremely%20preterm/Extremely%20preterm%20context%20chart.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Extremely%20preterm/Extremely%20preterm%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Extremely%20preterm/Extremely%20preterm%20download%20data.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Inductions/Inductions%20small%20multiples.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Inductions/Inductions%20small%20multiples.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Inductions/Inductions%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Inductions/Inductions%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Inductions/Inductions%20context%20charts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Inductions/Inductions%20context%20charts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Inductions/Inductions%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Inductions/Inductions%20download%20data.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Type%20of%20birth/Type%20of%20birth%20small%20multiples.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Type%20of%20birth/Type%20of%20birth%20small%20multiples.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Type%20of%20birth/Type%20of%20birth%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Type%20of%20birth/Type%20of%20birth%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Type%20of%20birth/Type%20of%20birth%20context%20charts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Type%20of%20birth/Type%20of%20birth%20context%20charts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Type%20of%20birth/Type%20of%20birth%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Type%20of%20birth/Type%20of%20birth%20download%20data.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Tears/Tears%20small%20multiples.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Tears/Tears%20small%20multiples.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Tears/Tears%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Tears/Tears%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Tears/Tears%20context%20charts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Tears/Tears%20context%20charts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Tears/Tears%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Tears/Tears%20download%20data.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Gestation%20at%20birth/Gestation%20at%20birth%20small%20multiples.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Gestation%20at%20birth/Gestation%20at%20birth%20small%20multiples.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Gestation%20at%20birth/Gestation%20at%20birth%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Gestation%20at%20birth/Gestation%20at%20birth%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Gestation%20at%20birth/Gestation%20at%20birth%20context%20charts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Gestation%20at%20birth/Gestation%20at%20birth%20context%20charts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Gestation%20at%20birth/Gestation%20at%20birth%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Gestation%20at%20birth/Gestation%20at%20birth%20download%20data.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Stillbirths%20and%20infant%20deaths/Stillbirths%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Stillbirths%20and%20infant%20deaths/Stillbirths%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20small%20multiples.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Apgar5/Apgar5%20small%20multiples.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20runcharts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Apgar5/Apgar5%20runcharts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20context%20charts.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Apgar5/Apgar5%20context%20charts.R", local = environment())
 
-  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20download%20data.R", local = environment())
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Apgar5/Apgar5%20download%20data.R", local = environment())
   
   source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Neonatal/Gestation%20by%20BAPM%20level%20of%20care%20runcharts.R", local = environment())
   

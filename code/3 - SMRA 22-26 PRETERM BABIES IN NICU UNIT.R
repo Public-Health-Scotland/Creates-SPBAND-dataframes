@@ -220,7 +220,7 @@ extremely_preterm_data <- readRDS(paste0(dashboard_dataframes_folder, "/extremel
 
 ### 5 - Testing charts look OK ----
 
-server_folder <- "https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/"
+server_folder <- "https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/"
 
 source(paste0(server_folder,
                 "functions.R"), local = FALSE)
