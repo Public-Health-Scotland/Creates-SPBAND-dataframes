@@ -19,7 +19,7 @@ here::here("code/miniapp", "miniapp.R")
 # 
 # username <- readline("What is your name? ")
 
-server_folder <- "https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/"
+server_folder <- "https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/"
 
 # server_folder <- paste0("/PHI_conf/MaternityBirths/Topics/MaternityHospitalSubmissions/Publications/SPBAND/dashboard/",
 #                         username, "/")
@@ -59,7 +59,7 @@ topicmenu <- sidebarMenu(
   menuItem("Home",
            tabName = "home",
            icon = icon("info-circle", verify_fa = FALSE) %>% rem_aria_label()
-           ),
+  ),
   menuItem("Multi indicator overview",
            tabName = "multi_indicator_overview",
            icon = icon("tachometer-alt", verify_fa = FALSE) %>% rem_aria_label()
@@ -105,21 +105,27 @@ topicmenu <- sidebarMenu(
                        tabName = "gestation_at_birth",
                        icon = shiny::icon("angle-double-right") %>% rem_aria_label()
            ),
-  menuSubItem("Stillbirths and infant deaths",
-              tabName = "stillbirths",
-              icon = shiny::icon("angle-double-right") %>% rem_aria_label()
-  ),
-  menuSubItem("Apgar scores",
-              tabName = "apgar_scores",
-              icon = shiny::icon("angle-double-right") %>% rem_aria_label()
+           menuSubItem("Stillbirths and infant deaths",
+                       tabName = "stillbirths",
+                       icon = shiny::icon("angle-double-right") %>% rem_aria_label()
+           ),
+           menuSubItem("Apgar scores",
+                       tabName = "apgar_scores",
+                       icon = shiny::icon("angle-double-right") %>% rem_aria_label()
+           )
+  ) %>% rem_menu_aria_label(),
+  menuItem("Neonatal",
+                    icon = icon("hand-holding-medical", verify_fa = FALSE) %>% rem_aria_label(),
+                    # menuSubItem("Median corrected gestational age at discharge from neonatal unit",
+                    #             tabName = "median_cga_30_32",
+                    #             icon = shiny::icon("angle-double-right") %>% rem_aria_label()
+                    # ),
+                    menuSubItem("Admissions to a neonatal unit by BAPM level of care",
+                                tabName = "gestation_by_BAPM_LOC",
+                                icon = shiny::icon("angle-double-right") %>% rem_aria_label()
+                    )
+           ) %>% rem_menu_aria_label()
   )
-  # ) %>% rem_menu_aria_label(),
-  # menuItem("Infant feeding",
-  #          tabName = "infant_feeding",
-  #          icon = icon("person-breastfeeding", verify_fa = FALSE) |> rem_aria_label()
-  # ) %>% rem_menu_aria_label()
-  )
-)
 
 # SIDEBAR ----
 
@@ -2255,6 +2261,158 @@ apgar_scores <- tabItem(
   
 ) # tabItem ("apgar_scores")
 
+# LATE PRE-TERM AND TERM/POST-TERM ADMISSIONS TO NEONATAL BY BAPM LEVELS OF CARE ----
+
+gestation_by_BAPM_LOC <- tabItem(
+  tabName = "gestation_by_BAPM_LOC",
+  
+  fluidRow(
+    tabBox(title = "Late pre-term and term/post-term admissions",
+           
+           # The id lets us use input$tabset28 on the server to find the current tab
+           id = "tabset28",
+           width = 12,
+           
+           # Time series chart and context chart
+           
+           tabPanel(title = "Scotland", #value = "gestation_by_BAPM_LOC_overview",
+                    
+                    fluidRow(
+                      column(12,
+                             textOutput("gestation_by_BAPM_LOC_runcharts_title"
+                             ),
+
+                             br()
+
+                      ),
+                      
+                      column(12,
+                             uiOutput("BAPM_LOC_subgroupControl"
+                             )
+                      ),
+
+                      column(10,
+                             p(htmlOutput("gestation_by_BAPM_LOC_runcharts_sub_title"
+                             )
+                             )
+                      ),
+
+                      column(1,
+                             downloadButton("gest_by_BAPM_LOC_download_data", "Download data",
+                                            icon = shiny::icon("download") %>% rem_aria_label()
+                             )
+                      ),
+                      
+                      column(12,
+                             loading(
+                               uiOutput("gestation_by_BAPM_LOC_runcharts",
+                                            height = "30em"
+                               )
+                             ),
+
+                             br()
+
+                      ),
+
+                      column(12,
+                             p(paste0("Data last refreshed on ", pretty_refresh_date, "."),
+                               class = "notes-style"
+                             )
+                      ),
+                      
+                      column(12,
+                             p("Source: Public Health Scotland - NeoCareIn+ and SMR02.",
+                               class = "notes-style"
+                             ),
+                             
+                             p("Further information on ",
+                               
+                               tags$a(
+                                 href = "https://publichealthscotland.scot/publications/births-in-scotland/",
+                                 tags$u("Births in Scotland"),
+                                 class = "externallink",
+                                 target = "_blank"
+                               ),
+                               " is available in PHS annual reports.",
+                               class = "notes-style",
+                             ),
+                             
+                             hr()
+                             
+                      ),
+                      
+                      column(12,
+                             p("We have used run charts to present the data above. Run charts use a series of rules to help identify unusual behaviour in data and indicate patterns that merit further investigation. Read more about the rules used in the charts in the ‘How do we identify patterns in the data?’ section on the Home page."
+                             ),
+                             
+                             p("The black dots connected by a line in the charts above show the percentage of babies born at the stated gestation who were admitted to a neonatal unit by their highest level of care, for each quarter, from Jan-Mar 2017 onwards."
+                             ),
+                             
+                             p("To provide a basis for identifying patterns in the data, a blue line shows the overall average (median) percentage of neonatal admissions for each level of care over the period Jan-Mar 2017 to Oct-Dec 2019 inclusive (the period before the COVID-19 pandemic in Scotland). The blue line is dashed where the average is projected outside that time range."
+                             ),
+                             
+                             p("The black line becomes yellow where there are 6 or more consecutive points above or below the average and is highlighted in green where there are 5 or more consecutively increasing or decreasing points."
+                             ),
+                             
+                             p("Due to the small number of babies admitted to neonatal care, data are only shown at all Scotland level."
+                             ),
+                             
+                             hr()
+                             
+                      )
+                      
+                    ), # fluidRow
+                    
+                    fluidRow(
+                      column(10,
+                             p(htmlOutput("gest_by_BAPM_LOC_context_chart_sub_title")
+                               )
+                             ),
+
+                      column(12,
+                             loading(
+                               plotlyOutput("gest_by_BAPM_LOC_context_charts",
+                                            height = "30em"
+                               )
+                             ),
+
+                             br()
+
+                      ),
+
+                      column(12,
+                             p(paste0("Data last refreshed on ", pretty_refresh_date, "."),
+                               class = "notes-style"
+                             )
+                      ),
+
+                      column(12,
+                             p("Source: Public Health Scotland - NeoCareIn+ and SMR02.",
+                               class = "notes-style"
+                             ),
+
+                             p("Further information on ",
+
+                               tags$a(
+                                 href = "https://publichealthscotland.scot/publications/births-in-scotland/",
+                                 tags$u("Births in Scotland"),
+                                 class = "externallink",
+                                 target = "_blank"
+                               ),
+                               " is available in PHS annual reports.",
+                               class = "notes-style"
+                             )
+                      )
+
+                    ) # fluidRow
+                    
+           ) # tabPanel("gestation_by_BAPM_LOC_overview")
+           
+    ) # tabBox("Late pre-term and term/post-term admissions")
+    
+  ) # fluidRow
+  
+) # tabItem ("gestation_by_BAPM_LOC")
 
 # BODY ----
 
@@ -2276,7 +2434,8 @@ body <- dashboardBody(
     perineal_tears,
     gestation_at_birth,
     stillbirths,
-    apgar_scores
+    apgar_scores,
+    gestation_by_BAPM_LOC
     #infant_feeding
   ) # tabItems
   
@@ -2328,7 +2487,8 @@ server <- function(input, output, session) {
                              Subgroup = "Age group",
                              Measure_cat = "all caesarean births",
                              Gestation = "under 32 weeks",
-                             Nicename = "under 32 weeks")
+                             Nicename = "under 32 weeks",
+                             BAPM_LOC_Subgroup_cat = "between 34 and 36 weeks (inclusive)")
   
   observeEvent(input$organisation, Selected$HBType <- input$organisation)
   
@@ -2337,6 +2497,8 @@ server <- function(input, output, session) {
   observeEvent(input$date, Selected$Date <- input$date)
   
   observeEvent(input$gestation, Selected$Gestation <- input$gestation)
+  
+  observeEvent(input$BAPM_LOC_subgroup_cat, Selected$BAPM_LOC_Subgroup_cat <- input$BAPM_LOC_subgroup_cat)
   
   # observeEvent(input$link_to_patterns, {
   #   updateTabsetPanel(getDefaultReactiveDomain(),
@@ -2404,6 +2566,12 @@ server <- function(input, output, session) {
                  updateTabsetPanel(getDefaultReactiveDomain(),
                                    "tabset26", # apgar_scores
                                    "Board comparison")
+                 
+                 
+                 
+                 updateTabsetPanel(getDefaultReactiveDomain(),
+                                   "tabset28", # gestation_by_BAPM_LOC
+                                   "Scotland")
 
                  Selected$Tabset <- "Board comparison" # forces reset for HBname filter where there is a Board comparison tab
                }
@@ -2422,6 +2590,8 @@ server <- function(input, output, session) {
   observeEvent(input$tabset24, Selected$Tabset <- input$tabset24)
   observeEvent(input$tabset25, Selected$Tabset <- input$tabset25)
   observeEvent(input$tabset26, Selected$Tabset <- input$tabset26)
+  
+    observeEvent(input$tabset28, Selected$Tabset <- input$tabset28)
 
     # observeEvent(input$tabset31, Selected$Tabset <- input$tabset31)  # testing whether can jump to a tabset
   
@@ -2544,6 +2714,19 @@ server <- function(input, output, session) {
       ),
       selected = "under 32 weeks",
       inline = FALSE
+    )
+  })
+  
+  # select BAPM_LOC_gestation
+  
+  output$BAPM_LOC_subgroupControl <- renderUI({
+    radioButtons(
+      inputId = "BAPM_LOC_subgroup_cat",
+      label = "Select gestation group",
+      choiceNames = list("late pre-term", "term and post-term"),
+      choiceValues = list("between 34 and 36 weeks (inclusive)", "between 37 and 42 weeks (inclusive)"),
+      #selected = "late pre-term",
+      inline = TRUE
     )
   })
   
@@ -2706,6 +2889,12 @@ gest_at_booking_revised_median_text <-  # was gest_at_booking_correction_text
   source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20context%20charts.R", local = environment())
 
   source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/main/Apgar5/Apgar5%20download%20data.R", local = environment())
+  
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Neonatal/Gestation%20by%20BAPM%20level%20of%20care%20runcharts.R", local = environment())
+  
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Neonatal/Gestation%20by%20BAPM%20level%20of%20care%20context%20charts.R", local = environment())
+
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Neonatal/Gestation%20by%20BAPM%20level%20of%20care%20download%20data.R", local = environment())
   
 }
 

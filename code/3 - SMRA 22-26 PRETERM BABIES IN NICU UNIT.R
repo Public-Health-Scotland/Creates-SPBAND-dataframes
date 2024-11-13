@@ -1,4 +1,4 @@
-########################################################################################
+###
 # Location of extremely pre-term births, 22-26 weeks inclusive for the
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Sourced from SMRA SMR02
@@ -11,7 +11,7 @@
 # Version of R - 4.1.2
 # Reads in SMRA SMR02_PI live births and produces a variety of tables/charts 
 # Approximate run time - <5 minutes
-#######################################################################################
+###
 
 ### 1 - Housekeeping ----
 

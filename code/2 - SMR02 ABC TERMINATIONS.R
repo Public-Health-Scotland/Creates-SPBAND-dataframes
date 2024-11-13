@@ -11,7 +11,7 @@
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.1.2 - note use of dplyr 1.1.0
-# Reads in SMR02 SPSS singleton live births and produces a variety of tables/charts 
+# Reads in SMR02 singleton live births and produces a variety of tables/charts 
 # Approximate run time - 5 minutes
 ####
 
@@ -891,7 +891,7 @@ remaining_dataframe <- remaining_dataframe %>%
 # 
 # remaining_dataframe <- bind_rows(remaining_dataframe, temp)
 
-### 12d - Create run chart data frame ----
+### 12d - Create runchart data frame ----
 
 runchart_dataframe <- filter(remaining_dataframe, measure_cat %in% runchart_categories) %>% 
   select(- c("num_description", "den_description", "measure_value_description", "plotted_on_charts", contains("MIO")))

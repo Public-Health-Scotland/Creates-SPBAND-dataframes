@@ -110,6 +110,10 @@ extremely_preterm_data <- readRDS(here(paste0(data_path, "/dashboard_dataframes/
 
 NRS_timeseries <- readRDS(here(paste0(data_path, "/dashboard_dataframes/stillbirths-infant-deaths-data.rds")))
 
+# load latest NeoCareIn+ gestation by BAPM highest location of care data
+
+gest_by_BAPM_LOC_data <- readRDS(here(paste0(data_path, "/dashboard_dataframes/gestation-by-BAPM-level-of-care.rds")))
+
 # split runchart_dataframe into individual measure dataframes
 
 bookings_data <- load_and_split_dataframe("BOOKINGS")
@@ -204,22 +208,24 @@ orig_shift_label <-
 
 # useful groupings for telling Shiny when to show the different drop-down filters
 
-tabnames <- 1:14
+tabnames <- 1:15
 
 names(tabnames) <- 
   c("home", "multi_indicator_overview", "pregnancies_booked",
     "terminations", "gestation_at_booking", "gestation_at_termination",
     "location_of_ex_pre_term", "inductions", "type_of_birth",
     "perineal_tears", "gestation_at_birth", "stillbirths",
-    "apgar_scores", "infant_feeding")
+    "apgar_scores", "infant_feeding", #"median_cga_30_32",
+    "gestation_by_BAPM_LOC")
 
-show_org <- names(tabnames[!tabnames %in% c(1, 7, 12, 14)]) # don't show organisation selection in "home",
-                                                     # "location_of_ex_pre_term", "stillbirths", "infant_feeding"
+show_org <- names(tabnames[!tabnames %in% c(1, 7, 12, 14, 15)]) # don't show organisation selection in "home",
+                                                     # "location_of_ex_pre_term", "stillbirths", "infant_feeding", 
+                                                     # "median_cga_30_32", "gestation_by_BAPM_LOC"
 
 show_HBname <- names(tabnames[tabnames %in% c(2, 3, 4)]) # show HB selection in "multi_indicator_overview",
                                                         # "pregnancies_booked", "terminations"
 
-show_HBname2 <- names(tabnames[!tabnames %in% c(1, 2, 3, 4, 7, 12, 14)]) # the remaining measures
+show_HBname2 <- names(tabnames[!tabnames %in% c(1, 2, 3, 4, 7, 12, 14, 15)]) # the remaining measures
 
 island_names <- c("NHS Orkney", "NHS Shetland", "NHS Western Isles"
                   )
