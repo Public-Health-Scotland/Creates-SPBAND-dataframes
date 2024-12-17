@@ -23,7 +23,7 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 
 ### 3 - Read in source data ----
 
-### 3a - real numerators and LOS will come from NeoCare+ ----
+### 3a - real numerators and LOS will come from NeoCareIn+ ----
 
 # The numerator contains a subset of the number of babies born alive at 30-32 weeks gestation who were admitted to a neonatal unit. The baby may have had a stay in multiple neonatal units. The LOS in neonatal care is added to their birth gestation to calculate their corrected gestational age at discharge:
 
@@ -31,17 +31,109 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 # calculate LOS (days between date of delivery and date of discharge from neonatal care
 # calculate corrected gestational age (gestation at birth plus LOS at discharge)
 # calculate the median corrected gestational age per quarter of discharge from neonatal care
-# uncertain whether we need to look for babies at this gestation that have also had a stay in paediatrics which would mean looking for CIS's on SMR01 
+# want to capture first admissions only
+# include only babies who stayed within neonatal care from first admission to discharge home/foster care 
+# exclude babies who were transferred to paediatrics
+# exclude babies who had surgery (exclusions to be defined)
+# exclude babies who died
 
-# probably will need to select first admission (CHI/Baby ID and date of admission)
+# need to select first admission (CHI/Baby ID and date of admission)
 # at 30-32 weeks (gestation in weeks, but need gestation in days as well)
 
-# Baby CHI or encrypted CHI (check no repeats)
-# Date of birth
-# Gestation at delivery (in completed weeks plus completed days)
-# Admission date (want first admission date) >= Jan 2018
-# Quarter - will be derived as quarter beginning (of discharge from neonatal care)
-# Gestation at discharge - calculated from Gestation at delivery + days between(date of discharge, date of delivery)
+# Still to understand how continuous stays work - a baby may have episodes in more than one unit during their stay, hence a single episode may not contain the baby's final discharge details
+
+# Variables required:
+
+# NeoCareIn+ variable name = BadgerNet variable name = description [type]
+
+
+# Identifiers:
+
+# unique_episode_id = BadgerUniqueID = A unique identifier for the episode [char(20)]
+
+# episode_number = EpisodeNumber = The number of this episode within the baby's episode of care (stay) [number]
+
+# baby_national_id = NationalIDBaby = A unique identifier for the baby; will be CHI if available else NHS number/system generated unique number [char(20)]
+
+# date_of_care = NULL = The date care was given to the baby [DateTime] (daily record variable)
+
+# *** unique_episode_id + date_of_care *** will form the unique record id (key) for processing the daily data. Will be used to join the daily and episode data.
+
+
+# Birth details:
+
+# baby_birth_date_time = BirthTimebaby = The baby's date and time of birth [DateTime]
+
+# Gestation at delivery (in completed weeks plus completed days):
+
+# gestation_at_delivery_weeks = GestWeeks = Number of full weeks of gestation at delivery [number]
+
+# gestation_at_delivery_days = GestDays = Number of additional days of gestation at delivery [number (0-6)]
+
+# Admission details:
+
+# Admission date (want first admission date) >= Jan 2018:
+
+# date_time_of_admission = AdmitTime = The date time the baby was admitted [DateTime]
+
+# ? admission_source = AdmissionSource = The source/type of location the baby was admitted from [char(2)]
+
+# ? admission_type = Referral = Type of admission based on place of booking, place of birth and previous admission history [char(1)]
+
+# ? admission_reason = AdmitPrincipalReason = The primary clinical reason for the episode of care [char(2)]
+# ? admission_category = AdmitType = Category of care given at the start of the episode [char(2)]
+
+# ? location_of_treatment_code = ProviderNHSCode = The code to identify the baby's location of treatment [char(10)]
+
+# ? location_of_treatment_name = ProviderName = The name of the baby's location of treatment [char(125)]
+
+ 
+# Discharge details:
+
+# date_time_of_discharge = DischTime = The date time the baby was discharged [DateTime]
+
+# discharge_destination = DischargeDestination = The destination of the baby at discharge at the end of the episode [char(2)]
+
+# exclude baby if 3 = DIED in any episode
+
+# include 1 = HOME, 4 = FOSTER CARE in FINAL episode (i.e. last date_time_of_discharge)
+
+# ? exclude 12 = TRANSFERRED TO ANOTHER HOSPITAL FOR SURGICAL CARE 
+# ? exclude any of the remaining codes for non-final episodes (baby no)
+
+# location_discharged_to_code = DischargeHospitalCode = The code of the hospital the baby has been transferred to [char(15)] - only populated if baby is transferred to another hospital but this is not validated.
+
+# location_discharged_to_name = DischargeHospitalName = The name of the location the baby has been transferred to [char(150)] - only populated if baby is transferred to another hospital but this is not validated.
+
+# discharge_destination_wardtype = DischargeDestinationWard = The type of ward the baby was discharged to at the end of the episode [char(1)] - only populated if baby is transferred to another hospital but this is not validated.
+
+# ? include 1 = POSTNATAL, 2 = TRANSITIONAL CARE, 3 = OTHER NEONATAL UNIT
+# ? exclude 4 = PICU, 5 = OTHER WARD
+
+# operation_procedure_performed = PrincipleProceduresDuringStay = The procedures selected at the time of discharge to be the principal procedures performed during the episode [char(4000)] *
+
+# Daily records:
+
+# operation_procedure_performed = OperationsToday = "Operations procedures performed during the 24 hour period [char(4000)] *
+
+# ? major_surgery = MajorSurgeryToday = Indicates if the baby had major surgery on this day [char(1) (Y/N)] - exclude if Y?
+
+# ? ecmo = ECMO = Indicates if the baby received ECMO in this day [char(1) (Y/N)] - exclude if Y?
+
+# **** There could be other procedures that indicate this baby should be excluded from the cohort ****
+
+
+# **** Procedures will be in a comma separated list; where possible they will be mapped to OPCS4; if we need ot exclude babies based on anything in this field this needs to be specified and agreed; will need to see what is contained in this field ****
+
+
+# Derived variables:
+
+# Quarter - will be derived as quarter beginning (of discharge from neonatal care) [Date]
+
+# Gestation at discharge - will calculated from Gestation at delivery + days between(date of discharge, date of delivery) [number]
+
+
+
 
 # perform counts on this data (section 5)
 # calculate measure_value (section 5)

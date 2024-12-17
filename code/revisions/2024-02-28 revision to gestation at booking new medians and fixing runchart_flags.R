@@ -1,6 +1,6 @@
 ####
 # Code to update the download data that was republished on 15th February 2024 with data run on 15th Dec 2023
-# To to fix "new" median average gestation at booking for Forth Valley and Tayside
+# To fix "new" median average gestation at booking for Forth Valley and Tayside
 # Bev Dodds
 # 28 February 2024
 # Last update by Bev Dodds
