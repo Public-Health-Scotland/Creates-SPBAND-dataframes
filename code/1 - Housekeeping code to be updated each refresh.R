@@ -37,13 +37,13 @@ source(here("code", "functions.R"))
 # set refresh date (based on when this code is run rather than when the files were created)
 
 
-refresh_date <- as.Date("2024-09-05") # change this each time the data is updated
+refresh_date <- as.Date("2024-12-13") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
-cut_off_date <- ymd("2024-06-01") # month beginning, usually increments by 3 months
-cut_off_date_ABC <- ymd("2024-08-01") # month beginning (ABC more timely than SMR02)
-cut_off_date_Qtrly <- ymd("2024-04-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
+cut_off_date <- ymd("2024-09-01") # month beginning, usually increments by 3 months
+cut_off_date_ABC <- ymd("2024-11-01") # month beginning (ABC more timely than SMR02)
+cut_off_date_Qtrly <- ymd("2024-07-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
 
 # metadata file - for num, den, measure_value descriptions
 
@@ -69,7 +69,7 @@ file.exists(terminations_filename)
 
 # update file name that contains NRS quarterly data (published)
 
-NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2024 Q2 - Table Q1.xlsx"
+NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2024 Q3 - Table Q1.xlsx"
 
 file.exists(NRS_filename)
 
