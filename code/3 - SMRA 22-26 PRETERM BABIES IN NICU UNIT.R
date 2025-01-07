@@ -38,7 +38,7 @@ smra_connect <- suppressWarnings(
 # Select records where the mother was discharged on or after 1 Jan 2018, 
 # at least one baby was delivered (CONDITION_ON_DISCHARGE = 3),
 # with an estimated gestation between 22 and 26 weeks (inclusive) - note difference from WI dashboard
-# have added location = "D201N" - home births (although these tend to be term babies anyway) ### stops query in it's tracks
+# have added location = "D201N" - home births (although these tend to be term babies anyway)
 # there are no discharge dates for home births so would need to use delivery date
 
 preterm <- as_tibble (dbGetQuery(smra_connect, statement = "SELECT 

@@ -36,6 +36,10 @@ library(fresh)
 
 #refresh_date <- as.Date(gsub(" extract", "", basename(most_recent_file_path)))
 
+# latest NRS publication date
+
+NRS_published_date <- "10 December 2024"
+
 refresh_date <- NULL
 
 data_path <- NULL
@@ -77,10 +81,6 @@ print(paste0("Data refreshed on ", refresh_date))
 print(paste0("Dataframe folder = ", dashboard_dataframes_folder))
 
 pretty_refresh_date <- format(refresh_date,"%d %B %Y")
-
-# latest NRS publication date
-
-NRS_published_date <- "17 September 2024"
 
 # folder for Excel downloads
 
@@ -129,11 +129,11 @@ apgar5_data <- load_and_split_dataframe("APGAR5")
 # set up x-axis chart labels
 
 bookings_date_range <- unique(bookings_data$date)
-bookings_date_tickvals <- bookings_date_range[seq(1, length(bookings_date_range), 2)]
+bookings_date_tickvals <- bookings_date_range[seq(1, length(bookings_date_range), 3)]
 bookings_date_ticktext <- format(bookings_date_tickvals,"%b %Y")
 
 terminations_date_range <- unique(terminations_data$date)
-terminations_date_tickvals <- terminations_date_range[seq(1, length(terminations_date_range), 3)]
+terminations_date_tickvals <- terminations_date_range[seq(1, length(terminations_date_range), 4)]
 terminations_date_ticktext <- format(terminations_date_tickvals, "%b %Y")
 
 SMR02_date_range <- unique(inductions_data$date)
@@ -198,6 +198,11 @@ gest_at_birth_data <- left_join(gest_at_birth_data,
 
 gest_at_birth_data$measure_cat <- factor(gest_at_birth_data$measure_cat, levels = measure_cat_order) 
 
+# puts context chart lines in correct order
+
+gest_at_birth_data$measure_cat_label <- factor(gest_at_birth_data$measure_cat_label,
+                                               levels = measure_cat_label) 
+
 # tidy up 
 
 rm(measure_cat_order, measure_cat_label, nicename)
@@ -240,7 +245,6 @@ type_of_birth_data$measure_cat <- factor(type_of_birth_data$measure_cat, levels 
 
 rm(measure_cat_order, measure_cat_label, nicename)
 
-
 # create static labels for the runchart legends
 
 orig_trend_label <-  
@@ -250,24 +254,24 @@ orig_shift_label <-
 
 # useful groupings for telling Shiny when to show the different drop-down filters
 
-tabnames <- 1:15
+tabnames <- 1:16
 
 names(tabnames) <- 
   c("home", "multi_indicator_overview", "pregnancies_booked",
     "terminations", "gestation_at_booking", "gestation_at_termination",
     "location_of_ex_pre_term", "inductions", "type_of_birth",
     "perineal_tears", "gestation_at_birth", "stillbirths",
-    "apgar_scores", "infant_feeding", #"median_cga_30_32",
+    "apgar_scores", "infant_feeding", "median_cga_30_32",
     "gestation_by_BAPM_LOC")
 
-show_org <- names(tabnames[!tabnames %in% c(1, 7, 12, 14, 15)]) # don't show organisation selection in "home",
+show_org <- names(tabnames[!tabnames %in% c(1, 7, 12, 14, 15, 16)]) # don't show organisation selection in "home",
                                                      # "location_of_ex_pre_term", "stillbirths", "infant_feeding", 
                                                      # "median_cga_30_32", "gestation_by_BAPM_LOC"
 
 show_HBname <- names(tabnames[tabnames %in% c(2, 3, 4)]) # show HB selection in "multi_indicator_overview",
                                                         # "pregnancies_booked", "terminations"
 
-show_HBname2 <- names(tabnames[!tabnames %in% c(1, 2, 3, 4, 7, 12, 14, 15)]) # the remaining measures
+show_HBname2 <- names(tabnames[!tabnames %in% c(1, 2, 3, 4, 7, 12, 14, 15, 16)]) # the remaining measures
 
 island_names <- c("NHS Orkney", "NHS Shetland", "NHS Western Isles"
                   )
@@ -332,7 +336,7 @@ orig_xaxis_plots <- list(
   )
                          
 orig_yaxis_plots <- list(
-  title = list(text = "", font = list(size = 14), standoff = 30),
+  title = list(font = list(size = 14)),
   showticklabels = TRUE,
   tickfont = list(size = 12),
   tickformat = ",d", # formats numbers with thousand separator if needed
