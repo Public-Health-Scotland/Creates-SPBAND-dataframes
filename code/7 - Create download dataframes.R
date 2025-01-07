@@ -5,12 +5,13 @@
 # Kit Lawrence
 # 24 January 2024
 # Last update by Bev Dodds
-# Latest update description: tweaked code
+# Last update date: 30 October 2024
+# Latest update description: added admissions to neocare measure into downloads
 # Type of script - preparation and data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.2.1
-# Reads pre-created download data from 2, 3 and 4 and
-# produces Excel spreadsheets in accessible format as well as csv versions
+# Reads pre-created download data from 2, 3, 4 and 5
+# produces Excel spreadsheets in accessible format
 # Approximate run time - <5 minutes
 ####
 
@@ -31,9 +32,14 @@ annual_dataframe <- readRDS(
   paste0(data_path, "/annual_dataframe.rds"))
 
 download_dataframe <- list_assign(download_dataframe,
-                                   "STILLBIRTHS AND INFANT DEATHS" = readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds")),
-                                   "EXTREMELY PRETERM" = readRDS(paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")),
-                                   "MULTI INDICATOR OVERVIEW" = annual_dataframe)
+                                  "STILLBIRTHS AND INFANT DEATHS" = readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds")),
+                                  "EXTREMELY PRETERM" = readRDS(paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")),
+                                  "MULTI INDICATOR OVERVIEW" = annual_dataframe,
+                                  "ADMISSIONS TO NEOCARE" = distinct(
+                                    readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")
+                                            )
+                                    )
+                                  )
 
 ### 2 - Make each dataset presentable ----
 
@@ -52,7 +58,8 @@ tidy_data_download <- function(measure_selection) {
              measure == "TEARS" ~ "Third- and fourth-degree perineal tears",
              measure == "GESTATION AT BIRTH" ~ "Gestation at birth: pre- and post- term births",
              measure == "APGAR5" ~ "Apgar scores",
-             measure == "EXTREMELY PRETERM" ~ "Location of extremely pre-term births", 
+             measure == "EXTREMELY PRETERM" ~ "Location of extremely pre-term births",
+             measure == "ADMISSIONS TO NEOCARE BY LEVEL OF CARE" ~ "Late pre-term and term/post-term admissions",
              TRUE ~ str_to_sentence(measure)),
            .keep = "unused") %>% 
     
@@ -66,11 +73,14 @@ tidy_data_download <- function(measure_selection) {
            Date = date,
            `Measure value`  = measure_value,
            `Sub-category` = measure_cat
+
     ) %>%
     
     # delete unused columns
     
-    select(-any_of(c("num_description", "den_description", "measure_value_description", "quarter_label", "use_for_mean", "measure_cat2", "MIO_measure_label", "MIO_measure_ref", "MIN", "MAX", "RANGE", "RESCALED", "MIN_RS", "MAX_RS", "plotlylabel")
+    select(- any_of(c("num_description", "den_description", "measure_value_description", "quarter_label", "use_for_mean", "measure_cat2", "MIO_measure_label", "MIO_measure_ref", "MIN", "MAX", "RANGE", "RESCALED", "MIN_RS", "MAX_RS", "plotlylabel",
+                      "subgroup_cat", "median_name", "trend", "shift", "long_formatted_name"
+    )
     )
     )
   
@@ -141,6 +151,13 @@ tidy_data_download <- function(measure_selection) {
       )
   }
   
+  if("short_formatted_name" %in% names(data)) {
+    data <- data %>%
+      rename(
+        `Gestation` = short_formatted_name
+      )
+  }
+  
   if ("shown_on_MIO" %in% names(data)) {
     data <- data %>%
       rename(`Shown on Multi indicator overview` = shown_on_MIO)
@@ -153,7 +170,7 @@ tidy_data_download <- function(measure_selection) {
   
   # make sure columns are in right order
   data <- data %>%
-    relocate(any_of(c("Dataset","Measure", "Board of", "Health Board", "Period", "Date", "Date label", "Sub-category", "Numerator", "Denominator", "Measure value", "Suffix", "Plotted on dashboard charts",  "Median", "Extended median", "Revised median", "Extended revised median", "Post-pandemic median", "Extended post-pandemic median", "Mean", "Extended mean", "Centreline", "Lower warning limit", "Upper warning limit", "Lower control limit", "Upper control limit", "Shown on Multi indicator overview")
+    relocate(any_of(c("Dataset","Measure", "Board of", "Health Board", "Period", "Date", "Date label", "Gestation", "Sub-category", "Numerator", "Denominator", "Measure value", "Suffix", "Plotted on dashboard charts",  "Median", "Extended median", "Revised median", "Extended revised median", "Post-pandemic median", "Extended post-pandemic median", "Mean", "Extended mean", "Centreline", "Lower warning limit", "Upper warning limit", "Lower control limit", "Upper control limit", "Shown on Multi indicator overview")
     )
     )
   

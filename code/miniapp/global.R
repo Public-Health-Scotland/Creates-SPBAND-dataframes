@@ -110,6 +110,10 @@ extremely_preterm_data <- readRDS(here(paste0(data_path, "/dashboard_dataframes/
 
 NRS_timeseries <- readRDS(here(paste0(data_path, "/dashboard_dataframes/stillbirths-infant-deaths-data.rds")))
 
+# load latest NeoCareIn+ gestation by BAPM highest location of care data
+
+gest_by_BAPM_LOC_data <- readRDS(here(paste0(data_path, "/dashboard_dataframes/gestation-by-BAPM-level-of-care.rds")))
+
 # split runchart_dataframe into individual measure dataframes
 
 bookings_data <- load_and_split_dataframe("BOOKINGS")
