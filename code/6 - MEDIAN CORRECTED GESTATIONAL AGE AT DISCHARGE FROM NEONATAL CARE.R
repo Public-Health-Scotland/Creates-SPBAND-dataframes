@@ -28,7 +28,7 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 # The numerator contains a subset of the number of babies born alive at 30-32 weeks gestation who were admitted to a neonatal unit. The baby may have had a stay in multiple neonatal units. The LOS in neonatal care is added to their birth gestation to calculate their corrected gestational age at discharge:
 
 # 30+0 to 32+6 weeks at birth
-# calculate LOS (days between date of delivery and date of discharge from neonatal care
+# calculate LOS (days between date of delivery and date of discharge from neonatal care)
 # calculate corrected gestational age (gestation at birth plus LOS at discharge)
 # calculate the median corrected gestational age per quarter of discharge from neonatal care
 # want to capture first admissions only
@@ -81,6 +81,7 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 # ? admission_type = Referral = Type of admission based on place of booking, place of birth and previous admission history [char(1)]
 
 # ? admission_reason = AdmitPrincipalReason = The primary clinical reason for the episode of care [char(2)]
+
 # ? admission_category = AdmitType = Category of care given at the start of the episode [char(2)]
 
 # ? location_of_treatment_code = ProviderNHSCode = The code to identify the baby's location of treatment [char(10)]
@@ -94,7 +95,7 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 
 # discharge_destination = DischargeDestination = The destination of the baby at discharge at the end of the episode [char(2)]
 
-# exclude baby if 3 = DIED in any episode
+# exclude baby if 3 = DIED
 
 # include 1 = HOME, 4 = FOSTER CARE in FINAL episode (i.e. last date_time_of_discharge)
 
@@ -123,7 +124,7 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 # **** There could be other procedures that indicate this baby should be excluded from the cohort ****
 
 
-# **** Procedures will be in a comma separated list; where possible they will be mapped to OPCS4; if we need ot exclude babies based on anything in this field this needs to be specified and agreed; will need to see what is contained in this field ****
+# **** Procedures will be in a comma separated list; where possible they will be mapped to OPCS4; if we need to exclude babies based on anything in this field this needs to be specified and agreed; will need to see what is contained in this field. ****
 
 
 # Derived variables:
@@ -159,12 +160,11 @@ babies_raw <-
          period = "Q",
          date_of_delivery = as.Date(date_of_delivery),
          quarter_of_delivery = as.Date(as.yearqtr(date_of_delivery)), # quarter beginning
-         estgest = na_if(estgest, 99),
-         babies = 1
+         estgest = na_if(estgest, 99)
          ) %>% 
   filter(date_of_delivery >= "2018-01-01" &
            between(estgest, 30, 32) & quarter_of_delivery <= cut_off_date_Qtrly) %>%  # don't publish incomplete data
-  select(dataset, hbtype, hbname, period, date_of_delivery, quarter_of_delivery, upi, discharge_date, numbir, outcome = outcome1, outcome_name = outcome1name, gestation_weeks = estgest, babies)
+  select(dataset, hbtype, hbname, period, date_of_delivery, quarter_of_delivery, upi, discharge_date, numbir, outcome = outcome1, outcome_name = outcome1name, gestation_weeks = estgest)
 
 ### 4 - Create new variables ----
 
@@ -182,44 +182,20 @@ babies_raw <-
   # janitor::remove_empty("cols") %>% 
   # select (- quarter)
 
-# generate a variable to flag admitted to neocare to add to the dataset
+# babies born this early are almost always admitted to neocare
 
 count_rows <- nrow(babies_raw)
 
-babies_raw <- babies_raw %>% 
-  mutate(admitted_to_neocare = round(runif(n = count_rows, min = 1, max = 100), 0)
-  )
-
-babies_raw <- babies_raw %>%   
-  mutate(admitted_to_neocare = case_when( # not definitive - made up numbers
-    between(admitted_to_neocare, 1, 60) ~ 1, # guessing at 60% admitted
-    .default = 9
-  ),
-  admitted_to_neocare_date = if_else(admitted_to_neocare == 1, 
-                                      date_of_delivery,
-                                      NA)
-  )
-
-babies_raw$admitted_to_neocare = factor(babies_raw$admitted_to_neocare, levels = c(1, 9),
-                                         labels = c(TRUE,
-                                                    FALSE)
+numbers <- summarise(babies_raw, .by = c(quarter_of_delivery, gestation_weeks), count = n()
                                          )
-
-numbers <- summarise(babies_raw, .by = c(quarter_of_delivery, gestation_weeks, admitted_to_neocare), count = sum(babies))
 
 write.xlsx(numbers, file.path(data_path, "number of live births admitted to neonatal care by gestation.xlsx"))
 
-# looking at the subset of 30-32 weeks gestation babies admitted to neonatal care
-
-babies_30_32_admitted <- filter(babies_raw, admitted_to_neocare == TRUE)
-
 # generate a random number of days (0-6) to add to the gestation in weeks
-
-count_rows <- nrow(babies_30_32_admitted)
 
 set.seed(1)
 
-babies_30_32_admitted <- babies_30_32_admitted %>% 
+babies_30_32_admitted <- babies_raw %>% 
   mutate(gestation_days = round(runif(n = count_rows, min = 0, max = 6), 0),
          gestation = gestation_weeks + round(gestation_days/7, 2),
          days_in_neonatal = round(runif(n = count_rows, min = 4, max = 50), 0),
@@ -245,221 +221,14 @@ babies_30_32_discharged_from_neocare <- babies_30_32_admitted %>%
   summarise(measure = "MEDIAN CORRECTED GEST AGE",
             measure_value_median = round(median(corrected, na.rm = TRUE), 2),
             measure_value_mean = round(mean(corrected, na.rm = TRUE), 2),
-            num = sum(babies),
+            num = n(),
             suffix = "weeks"
   ) %>% 
-  select(dataset, measure, hbtype, hbname, period, quarter_of_discharge, quarter_of_discharge_label, measure_cat, num, measure_value = measure_value_median, suffix) %>% 
+  select(dataset, measure, hbtype, hbname, period, quarter_of_discharge, quarter_of_discharge_label, measure_cat, num, measure_value = measure_value_median, suffix, measure_value_mean) %>% 
   ungroup()
 
 saveRDS(babies_30_32_discharged_from_neocare, paste0(dashboard_dataframes_folder, "/", "babies-30-32-discharged-from-neocare.rds"))
 
 babies_30_32_discharged_from_neocare <- readRDS(paste0(dashboard_dataframes_folder, "/", "babies-30-32-discharged-from-neocare.rds"))
-
-####
-
-### 5 - TABLES of counts and percentages ----
-
-# # and % of babies
-# calculate NUMBER and PERCENTAGE of VARIABLE in SUBGROUP compared with total
-# these are the points plotted on runcharts and context charts (Q),
-# not shown in multi indicator overview (Scotland only)
-
-# Don't think this will be relevant as we won't have the entire cohort of 30-32 weeks gestation babies, but if we do, this created the "download" data
-
-all_babies_30_32 <- babies_raw %>% 
-  counts(
-    dataset = .,
-    variable = admission_to_neocare,
-    date = quarter_of_delivery,
-    median_name = NULL,
-    tally_var = babies,
-    suffix = "weeks", # for hovertext
-    measure = "MEDIAN CORRECTED GEST AGE"
-  )
-
-# set median_name as a factor to keep order
-
-# gestation_by_BAPM_LOC$median_name <- factor(gestation_by_BAPM_LOC$median_name,
-#                                             levels = c("pre-pandemic median", "post-pandemic median"),
-#                                             labels = c("pre-pandemic median", # to Oct-Dec 2019 / to end Feb 2020
-#                                                        "post-pandemic median") # from Jul 2022 to end Jun 2024
-# )
-
-saveRDS(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
-
-gestation_by_BAPM_LOC <- readRDS(paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
-
-### 7 - Create data frames to be used in SPBAND ----
-
-### 7a - Create runchart dataframe ----
-
-BAPM_LOC_runchart_dataframe <- gestation_by_BAPM_LOC |> 
-  filter(measure_cat %in% BAPM_LOC_runchart_categories) 
-
-### i - MEDIAN of measure_value ----
-
-# calculate the MEDIAN of the measure_value variable over the relevant median_name - plotted as a solid line
-
-BAPM_LOC_runchart_dataframe <- calculate_medians(dataset = BAPM_LOC_runchart_dataframe,
-                                                 measure_value = measure_value,
-                                                 subgroup_cat = subgroup_cat)
-
-### ii - Mark SHIFTS and TRENDS ----
-
-# compares measure_value with extended to determine shifts
-# compares consecutive measure_values to determine trends
-
-BAPM_LOC_runchart_dataframe <- runchart_flags(
-  dataset = BAPM_LOC_runchart_dataframe,
-  shift = "orig_shift",
-  trend = "orig_trend",
-  value = measure_value,
-  median = extended)
-
-# Set up data for "trend" and "shift" traces
-# We don't want to use this data to plot anything that is not part of a
-# trend or shift, so just set FALSE-flagged data to NA
-
-BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe |> 
-  mutate(
-    trend = 
-      if_else(orig_trend == TRUE, 
-              measure_value, NA), # copies measure_value to plot as trend
-    shift =
-      if_else(orig_shift == TRUE,
-              measure_value, NA) # copies measure_value to plot as shift
-  )
-
-# split adjacent shifts and trends that should not be connected
-
-BAPM_LOC_runchart_dataframe <- add_split_gaps(
-  dataset = BAPM_LOC_runchart_dataframe,
-  measure = "trend",
-  split_col_prefix = "orig_trend") |> 
-  rename(c("trend_num_rows" = "num_rows", "trend_dup_row" = "dup_row"))
-
-BAPM_LOC_runchart_dataframe <- add_split_gaps(
-  dataset = BAPM_LOC_runchart_dataframe,
-  measure = "shift",
-  split_col_prefix = "orig_shift") |> 
-  rename(c("shift_num_rows" = "num_rows", "shift_dup_row" = "dup_row"))
-
-# reset extended values to NA where median values exist (bar last median value)
-
-BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe |>
-  group_by(dataset, hbtype, hbname, period, measure, measure_cat, subgroup_cat, median_name) |> 
-  mutate(extended = if_else(
-    !is.na(median) & !is.na(extended) & is.na(lead(median)),
-    median, NA),
-    extended = na.locf(extended, na.rm = FALSE)
-  )
-
-# pivot wider to split median and extended into separate columns based on median_name
-
-BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe |>
-  mutate(median_name2 = median_name) |> 
-  pivot_wider(names_from = median_name2,
-              values_from = median,
-              values_fill = NULL,
-              names_sort = TRUE)
-
-BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe |> 
-  pivot_wider(names_from = median_name, 
-              values_from = extended,
-              values_fill = NULL,
-              names_prefix = "extended ",
-              names_sort = TRUE)
-
-BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe |> 
-  janitor::clean_names()
-
-# to check whether any duplicate rows have been added to split trends or shifts - don't want these in the download data - wikl be removed in 6 - Create download dataframes.R anyway
-
-print(max(c(BAPM_LOC_runchart_dataframe$trend_num_rows,
-                            BAPM_LOC_runchart_dataframe$shift_num_rows))
-)
-
-saveRDS(BAPM_LOC_runchart_dataframe, paste0(data_path, "/BAPM_LOC_runchart_dataframe.rds"))
-
-BAPM_LOC_runchart_dataframe <- readRDS(paste0(data_path, "/BAPM_LOC_runchart_dataframe.rds"))
-
-### 8 - Match runchart data to main dataframe ----
-
-gestation_by_BAPM_LOC <- left_join(gestation_by_BAPM_LOC, BAPM_LOC_runchart_dataframe,
-                                   by = c("dataset", "hbtype", "hbname", "date", "period", "subgroup_cat", "den", "measure_cat", "num", "measure_value", "suffix", "measure", "subgroup"))
-
-### 9 - Tidy up and save required variables ----
-
-# add on the num, den, measure_value metadata for the data download
-
-gestation_by_BAPM_LOC <- left_join(gestation_by_BAPM_LOC, metadata, 
-                                   by = c("measure", "measure_cat")
-)
-
-# Add "nicenames"
-
-# formatted_name is the factor which controls the order in which the context charts legends should appear
-
-short_formatted_name <- c("late pre-term", "term and post-term")
-
-long_formatted_name <- c(paste0("late pre-term (34", "<sup>+0</sup>", " to 36", "<sup>+6</sup>", " weeks gestation)"),
-                    paste0("term/post-term (37", "<sup>+0</sup>", " to 41", "<sup>+6</sup>", " weeks gestation)")
-                    )
-
-nicename <- tibble(BAPM_LOC_subgroup_categories, short_formatted_name, long_formatted_name)
-
-nicename$short_formatted_name <- factor(nicename$short_formatted_name, levels = short_formatted_name)
-
-nicename$long_formatted_name <- factor(nicename$long_formatted_name, levels = long_formatted_name)
-
-gestation_by_BAPM_LOC <- left_join(gestation_by_BAPM_LOC,
-                                   nicename,
-                                   by = c("subgroup_cat" = "BAPM_LOC_subgroup_categories")
-)
-
-# calculate overall range of dates
-
-date_range_Q <- as.Date(range(gestation_by_BAPM_LOC$date))
-
-# create a vector for the chart labels to force first label to Jan-Mar 2018
-
-x_date_labels_Q <-
-  seq(
-    from = min(date_range_Q),
-    to = max(date_range_Q),
-    by = "3 months"
-  )
-
-x_date_labels_Q2 <- 
-  qtr(x_date_labels_Q, format = "short")
-
-# add date_label and round values
-
-gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC |>
-  mutate(date_label = qtr(ymd(date), format = "short"),
-         date_label = factor(date_label,
-                             levels = x_date_labels_Q2,
-                             ordered = TRUE),
-         across(c(measure_value, pre_pandemic_median:extended_pre_pandemic_median, trend, shift), ~ round(., 3))
-  ) |>
-  ungroup()
-
-gestation_by_BAPM_LOC$measure_cat <- factor(gestation_by_BAPM_LOC$measure_cat,
-                                            levels = c(BAPM_LOC_runchart_categories,
-                                                       "all admissions to a neonatal unit",
-                                                       "other or not needed",
-                                                       "total"
-                                            )
-)
-
-gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
-  arrange(date, subgroup_cat, measure_cat)
-
-gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
-  select("dataset", "hbtype", "hbname", "period", "date", "date_label", "median_name", "measure", "subgroup_cat", "measure_cat", "num", "den", "measure_value", "suffix", "pre_pandemic_median",  "extended_pre_pandemic_median", "trend", "shift", "short_formatted_name", "long_formatted_name", "num_description", "den_description", "measure_value_description", "plotted_on_charts", "shown_on_MIO") # "post_pandemic_median", "extended_post_pandemic_median",
-
-saveRDS(gestation_by_BAPM_LOC, paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds"))
-
-gestation_by_BAPM_LOC <- readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds"))
 
 ## - END OF SCRIPT ----
