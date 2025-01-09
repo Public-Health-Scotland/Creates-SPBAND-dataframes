@@ -19,7 +19,7 @@ percentage  <- function(x, y, na.rm = TRUE) {
 # measure: the name of the measure (e.g. "GESTATION AT BIRTH")
 
 counts <- 
-  function(dataset = births, variable, date = date, median_name, 
+  function(dataset = births, variable, date = date, median_name = median_name, 
            subgroup = NULL, tally_var = births, suffix, measure){ 
     
     name <- substitute(subgroup)
@@ -46,9 +46,9 @@ counts <-
         
         # aggregates numerator (num) over specified group
         
-        select(dataset, hbtype, hbname, median_name, {{date}},
+        select(dataset, hbtype, hbname, {{median_name}}, {{date}},
                period, {{subgroup}}, measure_cat := {{variable}}, {{tally_var}}) %>%
-        group_by(dataset, hbtype, hbname, {{date}}, period, median_name,
+        group_by(dataset, hbtype, hbname, {{date}}, period, {{median_name}},
                  {{subgroup}}, measure_cat) %>%
         summarise(num = sum({{tally_var}}))
       
