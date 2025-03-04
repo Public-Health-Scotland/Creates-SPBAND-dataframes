@@ -14,7 +14,7 @@
 # # Approximate run time - <1 minute
 ####
 
-### Housekeeping ----
+### 1 - Housekeeping ----
 # This section should be the only section of the script which requires manual changes 
 # for future updates and includes:
 
@@ -44,6 +44,13 @@ cut_off_date <- ymd("2024-09-01") # month beginning, usually increments by 3 mon
 cut_off_date_ABC <- ymd("2024-11-01") # month beginning (ABC more timely than SMR02)
 cut_off_date_Qtrly <- ymd("2024-07-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
 
+# create a vector with "complete" years (for multi indicator overview)
+# update as necessary (usually in the April and October refreshes)
+
+factor_labels_year <- c("2023", "2022", "2021", "2020", "2019", "2018", "2017",
+                        "2023/24", "2022/23", "2021/22", "2020/21", "2019/20", "2018/19", "2017/18"
+                        )
+
 # metadata file - for num, den, measure_value descriptions
 
 metadata <- read.xlsx(here("../basefiles/measure metadata.xlsx"), sheet = 1) 
@@ -72,12 +79,7 @@ NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2024 Q3
 
 file.exists(NRS_filename)
 
-# create a vector with "complete" years (for multi indicator overview)
-# update as necessary
-
-factor_labels_year <- c("2023", "2022", "2021", "2020", "2019", "2018", "2017",
-                        "2023/24", "2022/23", "2021/22", "2020/21", "2019/20", "2018/19", "2017/18"
-                        )
+### 2 - Initialise variables ----
 
 # create a vector containing "measure_cat" that will have a timeseries or runchart
 
@@ -99,6 +101,8 @@ island_boards <- c("NHS Orkney", "NHS Western Isles", "NHS Shetland")
 hbcipher <- read.csv(here("../basefiles/hb14_hb19.csv"), stringsAsFactors = FALSE) %>% 
   filter(is.na(HBDateArchived)) %>% # want the latest NHS Board codes
   select(HBCIPHER, HBCODE, HBNAME, HBLABEL)
+
+### 3 - Create folders and assign shortcut names ----
 
 # set local output folder for data - dated automatically
 
@@ -133,6 +137,8 @@ excel_downloads_folder <- here(paste0(dashboard_dataframes_folder, "/excel downl
 if (!dir.exists(excel_downloads_folder)) {
   dir.create(excel_downloads_folder, showWarnings = TRUE, recursive = TRUE, mode = "2770")
 }
+
+### 4 - Sets charts defaults ----
 
 # sets colour palette to the PHS colour scheme
 

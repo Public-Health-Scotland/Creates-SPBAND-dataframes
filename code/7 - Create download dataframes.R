@@ -34,11 +34,11 @@ annual_dataframe <- readRDS(
 download_dataframe <- list_assign(download_dataframe,
                                   "STILLBIRTHS AND INFANT DEATHS" = readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds")),
                                   "EXTREMELY PRETERM" = readRDS(paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")),
-                                  "MULTI INDICATOR OVERVIEW" = annual_dataframe,
-                                  "ADMISSIONS TO NEOCARE" = distinct(
-                                    readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")
-                                            )
-                                    )
+                                  "MULTI INDICATOR OVERVIEW" = annual_dataframe
+                                  # "ADMISSIONS TO NEOCARE" = distinct(
+                                  #   readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")
+                                            # )
+                                    # )
                                   )
 
 ### 2 - Make each dataset presentable ----
@@ -191,7 +191,7 @@ names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
     c("tears",
       "gestation_at_termination") ~ 8,
     "gestation_at_booking" ~ 8,
-    "type_of_birth" ~ 9,
+    #"type_of_birth" ~ 9,
     .default = 7
   )
 
