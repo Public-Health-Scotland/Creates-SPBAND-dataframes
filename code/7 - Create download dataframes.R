@@ -35,10 +35,10 @@ download_dataframe <- list_assign(download_dataframe,
                                   "STILLBIRTHS AND INFANT DEATHS" = readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds")),
                                   "EXTREMELY PRETERM" = readRDS(paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")),
                                   "MULTI INDICATOR OVERVIEW" = annual_dataframe,
-                                  "ADMISSIONS TO NEOCARE" = distinct(
-                                    readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")
-                                            )
-                                    )
+                                  "ADMISSIONS TO NEOCARE BY LEVEL OF CARE" = readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")
+                                            ),
+                                  "MEDIAN CORRECTED GESTATIONAL AGE" = readRDS(paste0(dashboard_dataframes_folder, "/", "babies-30-32-discharged-from-neocare.rds")
+                                                                        )
                                   )
 
 ### 2 - Make each dataset presentable ----
@@ -60,6 +60,7 @@ tidy_data_download <- function(measure_selection) {
              measure == "APGAR5" ~ "Apgar scores",
              measure == "EXTREMELY PRETERM" ~ "Location of extremely pre-term births",
              measure == "ADMISSIONS TO NEOCARE BY LEVEL OF CARE" ~ "Late pre-term and term/post-term admissions",
+             measure == "MEDIAN CORRECTED GEST AGE" ~ "Median corrected gestational age at discharge from neonatal care",
              TRUE ~ str_to_sentence(measure)),
            .keep = "unused") %>% 
     

@@ -113,10 +113,10 @@ topicmenu <- sidebarMenu(
   ) %>% rem_menu_aria_label(),
   menuItem("Neonatal",
                     icon = icon("hand-holding-medical", verify_fa = FALSE) %>% rem_aria_label(),
-                    # menuSubItem("Median corrected gestational age at discharge from neonatal unit",
-                    #             tabName = "median_cga_30_32",
-                    #             icon = shiny::icon("angle-double-right") %>% rem_aria_label()
-                    # ),
+                    menuSubItem("Median corrected gestational age at discharge from neonatal unit",
+                                tabName = "median_cga_30_32",
+                                icon = shiny::icon("angle-double-right") %>% rem_aria_label()
+                    ),
                     menuSubItem("Admissions to a neonatal unit by level of care",
                                 tabName = "gestation_by_BAPM_LOC",
                                 icon = shiny::icon("angle-double-right") %>% rem_aria_label()
@@ -1543,6 +1543,94 @@ apgar_scores <- tabItem(
   
 ) # tabItem ("apgar_scores")
 
+# MEDIAN CGA 30-32 WEEKS ----
+
+median_cga_30_32 <- tabItem(
+  tabName = "median_cga_30_32",
+  
+  fluidRow(
+    tabBox(title = "Median corrected gestational age",
+           
+           # The id lets us use input$tabset27 on the server to find the current tab
+           id = "tabset27",
+           width = 12,
+           
+           # Time series chart and context chart
+           
+           tabPanel(title = "Scotland", #value = "median_cga_30_32_overview",
+                    
+                    fluidRow(
+                      column(12,
+                             textOutput("corrected_gestational_age_runcharts_title"
+                             ),
+                             
+                             br()
+                             
+                      ),
+                      
+                      column(10,
+                             p("Median corrected gestational age at discharge from neonatal unit for babies born at 30-32 weeks gestation"
+                             )
+                      ),
+                      
+                      column(1, 
+                             downloadButton("corrected_gestational_age_download_data", "Download data",
+                                            icon = shiny::icon("download") %>% rem_aria_label()
+                             )
+                      ),
+                      
+                      column(12,
+                             loading(
+                               plotlyOutput("corrected_gestational_age_runcharts",
+                                            height = "30em"
+                               )
+                             ),
+                             
+                             br()
+                             
+                      ),
+                      
+                      column(12,
+                             p(paste0("Data last refreshed on ", pretty_refresh_date, "."),
+                               class = "notes-style"
+                             )
+                      )
+                      
+                    ), # fluidRow
+                    
+                    fluidRow(
+                      column(10,
+                             p("Number of babies of 30-32 weeks gestation (at birth) admitted to a neonatal unit"
+                             )
+                      ),
+                      
+                      column(12,
+                             loading(
+                               plotlyOutput("corrected_gestational_age_context_charts",
+                                            height = "30em"
+                               )
+                             ),
+                             
+                             br()
+                             
+                      ),
+                      
+                      column(12,
+                             p(paste0("Data last refreshed on ", pretty_refresh_date, "."),
+                               class = "notes-style"
+                             )
+                      )
+
+                    ) # fluidRow
+                    
+           ) # tabPanel("median_cga_30_32_overview")
+           
+    ) # tabBox("Median corrected gestational age at discharge from neonatal unit")
+    
+  ) # fluidRow
+  
+) # tabItem ("median_cga_30_32")
+
 # LATE PRE-TERM AND TERM/POST-TERM ADMISSIONS TO NEONATAL BY BAPM LEVELS OF CARE ----
 
 gestation_by_BAPM_LOC <- tabItem(
@@ -1600,47 +1688,6 @@ gestation_by_BAPM_LOC <- tabItem(
                              p(paste0("Data last refreshed on ", pretty_refresh_date, "."),
                                class = "notes-style"
                              )
-                      ),
-                      
-                      column(12,
-                             p("Source: Public Health Scotland - NeoCareIn+ and SMR02.",
-                               class = "notes-style"
-                             ),
-                             
-                             p("Further information on ",
-                               
-                               tags$a(
-                                 href = "https://publichealthscotland.scot/publications/births-in-scotland/",
-                                 tags$u("Births in Scotland"),
-                                 class = "externallink",
-                                 target = "_blank"
-                               ),
-                               " is available in PHS annual reports.",
-                               class = "notes-style",
-                             ),
-                             
-                             hr()
-                             
-                      ),
-                      
-                      column(12,
-                             p("We have used run charts to present the data above. Run charts use a series of rules to help identify unusual behaviour in data and indicate patterns that merit further investigation. Read more about the rules used in the charts in the ‘How do we identify patterns in the data?’ section on the Home page."
-                             ),
-                             
-                             p("The black dots connected by a line in the charts above show the percentage of babies born at the stated gestation who were admitted to a neonatal unit by their highest level of care, for each quarter, from Jan-Mar 2017 onwards."
-                             ),
-                             
-                             p("To provide a basis for identifying patterns in the data, a blue line shows the overall average (median) percentage of neonatal admissions for each level of care over the period Jan-Mar 2017 to Oct-Dec 2019 inclusive (the period before the COVID-19 pandemic in Scotland). The blue line is dashed where the average is projected outside that time range."
-                             ),
-                             
-                             p("The black line becomes yellow where there are 6 or more consecutive points above or below the average and is highlighted in green where there are 5 or more consecutively increasing or decreasing points."
-                             ),
-                             
-                             p("Due to the small number of babies admitted to neonatal care, data are only shown at all Scotland level."
-                             ),
-                             
-                             hr()
-                             
                       )
                       
                     ), # fluidRow
@@ -1664,24 +1711,6 @@ gestation_by_BAPM_LOC <- tabItem(
 
                       column(12,
                              p(paste0("Data last refreshed on ", pretty_refresh_date, "."),
-                               class = "notes-style"
-                             )
-                      ),
-
-                      column(12,
-                             p("Source: Public Health Scotland - NeoCareIn+ and SMR02.",
-                               class = "notes-style"
-                             ),
-
-                             p("Further information on ",
-
-                               tags$a(
-                                 href = "https://publichealthscotland.scot/publications/births-in-scotland/",
-                                 tags$u("Births in Scotland"),
-                                 class = "externallink",
-                                 target = "_blank"
-                               ),
-                               " is available in PHS annual reports.",
                                class = "notes-style"
                              )
                       )
@@ -1717,6 +1746,7 @@ body <- dashboardBody(
     gestation_at_birth,
     stillbirths,
     apgar_scores,
+    median_cga_30_32,
     gestation_by_BAPM_LOC
     #infant_feeding
   ) # tabItems
@@ -1849,7 +1879,9 @@ server <- function(input, output, session) {
                                    "tabset26", # apgar_scores
                                    "Board comparison")
                  
-                 
+                                  updateTabsetPanel(getDefaultReactiveDomain(),
+                                   "tabset27", # median_cga_30_32
+                                   "Scotland")
                  
                  updateTabsetPanel(getDefaultReactiveDomain(),
                                    "tabset28", # gestation_by_BAPM_LOC
@@ -1872,7 +1904,7 @@ server <- function(input, output, session) {
   observeEvent(input$tabset24, Selected$Tabset <- input$tabset24)
   observeEvent(input$tabset25, Selected$Tabset <- input$tabset25)
   observeEvent(input$tabset26, Selected$Tabset <- input$tabset26)
-  
+  observeEvent(input$tabset27, Selected$Tabset <- input$tabset27)
   observeEvent(input$tabset28, Selected$Tabset <- input$tabset28)
 
     # observeEvent(input$tabset31, Selected$Tabset <- input$tabset31)  # testing whether can jump to a tabset
@@ -2171,6 +2203,12 @@ gest_at_booking_revised_median_text <-  # was gest_at_booking_correction_text
   source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Apgar5/Apgar5%20context%20charts.R", local = environment())
 
   source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Apgar5/Apgar5%20download%20data.R", local = environment())
+  
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Neonatal/Median%20corrected%20gestational%20age%20at%20discharge%20context%20charts.R", local = environment())
+  
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Neonatal/Median%20corrected%20gestational%20age%20at%20discharge%20download%20data.R", local = environment())
+  
+  source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Neonatal/Median%20corrected%20gestational%20age%20at%20discharge%20runcharts.R", local = environment())
   
   source("https://raw.githubusercontent.com/Public-Health-Scotland/SPBAND/refs/heads/new_neonatal_measures/Neonatal/Gestation%20by%20BAPM%20level%20of%20care%20runcharts.R", local = environment())
   

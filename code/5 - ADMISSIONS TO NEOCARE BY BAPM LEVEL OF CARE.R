@@ -89,11 +89,13 @@ babies_raw <-
          hbname = "Scotland",
          date_of_delivery = as.Date(date_of_delivery),
          quarter_of_delivery = as.Date(as.yearqtr(date_of_delivery)), # quarter beginning
+         fin_year = extract_fin_year(date_of_delivery),
+         calendar_year = format(ymd(date_of_delivery), "%Y"),
          period = "Q",
          estgest = na_if(estgest, 99),
   ) %>%  
   filter(date_of_delivery >= "2018-01-01" & quarter_of_delivery <= cut_off_date_Qtrly) %>% # don't publish incomplete data
-  select(dataset, hbtype, hbname, date_of_delivery, quarter_of_delivery, period, upi, numbir,
+  select(dataset, hbtype, hbname, fin_year, calendar_year, date_of_delivery, quarter_of_delivery, period, upi, numbir,
          outcome = outcome1, outcome_name = outcome1name, gestation_weeks = estgest)
 
 ### 4 - Create new variables ----
@@ -119,11 +121,30 @@ babies_raw <-
 babies_raw <- babies_raw %>% 
   mutate(gest_grp = case_when(
     between(gestation_weeks, 34, 36) ~ 1,
-    between(gestation_weeks, 37, 42) ~ 2
+    between(gestation_weeks, 37, 42) ~ 2,
+    .default = 3
   ),
-  babies = 1) %>% 
-  filter(!is.na(gest_grp))
+  babies = 1)
 
+# summarises the count and percentage of these gestation groups compared with all babies
+
+summary <- summarise(babies_raw,
+                     .by = gest_grp,
+                     babies = sum(babies)
+                     ) %>% 
+  arrange(gest_grp) %>% 
+  janitor::adorn_totals("row", fill = "")
+
+summary <- left_join(summary, summary %>% 
+  janitor::adorn_percentages("col") %>% 
+  janitor::adorn_pct_formatting(affix_sign = FALSE) %>% 
+    mutate(percent = as.double(babies)) %>% 
+    select(- babies),
+  by = "gest_grp"
+)
+
+babies_raw <- filter(babies_raw, gest_grp != 3)
+                   
 babies_raw$gest_grp <- 
   factor(babies_raw$gest_grp, levels = c(1, 2),
          labels = c("between 34 and 36 weeks (inclusive)", # late pre-term
@@ -132,22 +153,18 @@ babies_raw$gest_grp <-
 
 # generate a random BAPM level (1-3) to add to the dataset to create a subset (fake NeoCare dataset)
 
-count_rows <- nrow(babies_raw)
+set.seed(7)
+ss <- sample(1:4, 
+             size = nrow(babies_raw),
+             replace = TRUE,
+             prob = c(0.022, 0.023, 0.052, 0.903)) # using overall percentages from Births in Scotland for the totals for 2018/19 - 2023/24 - sums to 1 to make proportions right
 
-BAPM_babies <- babies_raw %>% 
-  mutate(BAPM_level_of_care = round(runif(n = count_rows, min = 1, max = 100), 0)
-  )
+ic <- babies_raw[ss == 1,] %>% mutate(BAPM_level_of_care = 1)
+hdu <- babies_raw[ss == 2,] %>% mutate(BAPM_level_of_care = 2)
+sc <- babies_raw[ss == 3,] %>% mutate(BAPM_level_of_care = 3)
+others <- babies_raw[ss == 4,] %>% mutate(BAPM_level_of_care = 9)
 
-BAPM_babies <- BAPM_babies %>% 
-  mutate(BAPM_level_of_care = case_when( # not definitive, would depend on gestation - made up numbers
-    between(BAPM_level_of_care, 1, 3) ~ 1, # roughly 3% intensive care
-    between(BAPM_level_of_care, 4, 5) ~ 2, # roughly 2% high dependency care
-    between(BAPM_level_of_care, 6, 13) ~ 3 # roughly 7% special care 
-  )
-  )
-
-BAPM_babies <- BAPM_babies %>% 
-  filter(!is.na(BAPM_level_of_care))
+BAPM_babies <- bind_rows(ic, hdu, sc) # roughly 10% - no weighting for gestation
 
 # generate a random number of days (0-7) to add to the date_of_delivery -> date of admission to neonatal care
 
@@ -188,7 +205,6 @@ all_admissions_to_neocare <- BAPM_babies %>%
 admissions_to_neocare <- bind_rows(all_admissions_to_neocare, admissions_to_neocare) %>% 
   arrange(quarter_of_admission, gest_grp, BAPM_level_of_care)
 
-
 # aggregate babies_raw by quarter and gest_grp to get denominators
 
 live_babies <- summarise(babies_raw,
@@ -213,7 +229,8 @@ live_babies <- live_babies %>%
 
 # rename variables to standard names for download and dashboard code
 
-gestation_by_BAPM_LOC <- bind_rows(gestation_by_BAPM_LOC, live_babies) %>% 
+gestation_by_BAPM_LOC <- 
+  bind_rows(gestation_by_BAPM_LOC, live_babies) %>% 
   rename(date = quarter_of_admission,
          subgroup_cat = gest_grp,
          den = babies,
@@ -394,5 +411,7 @@ gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
 saveRDS(gestation_by_BAPM_LOC, paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds"))
 
 gestation_by_BAPM_LOC <- readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds"))
+
+write.csv(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.csv"), row.names = FALSE)
 
 ## - END OF SCRIPT ----

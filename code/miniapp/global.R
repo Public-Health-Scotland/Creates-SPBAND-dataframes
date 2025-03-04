@@ -110,6 +110,10 @@ extremely_preterm_data <- readRDS(here(paste0(data_path, "/dashboard_dataframes/
 
 NRS_timeseries <- readRDS(here(paste0(data_path, "/dashboard_dataframes/stillbirths-infant-deaths-data.rds")))
 
+# load latest NeoCareIn+ babies born at 30-32 weeks discharged from a neonatal unit
+
+babies_30_32_discharged_from_neocare_data <- readRDS(here(paste0(data_path, "/dashboard_dataframes/babies-30-32-discharged-from-neocare.rds")))
+
 # load latest NeoCareIn+ gestation by BAPM highest location of care data
 
 gest_by_BAPM_LOC_data <- readRDS(here(paste0(data_path, "/dashboard_dataframes/gestation-by-BAPM-level-of-care.rds")))
@@ -142,6 +146,10 @@ SMR02_date_ticktext <- qtr(SMR02_date_tickvals, format = "short")
 
 SMR02_multiples_date_tickvals <- SMR02_date_range[seq(1, length(SMR02_date_range), 4)]
 SMR02_multiples_date_ticktext <- qtr(SMR02_multiples_date_tickvals, format = "short")
+
+NeoCare_date_range <- unique(gest_by_BAPM_LOC_data$date)
+NeoCare_date_tickvals <- NeoCare_date_range[seq(1, length(NeoCare_date_range), 2)]
+NeoCare_date_ticktext <- qtr(NeoCare_date_tickvals, format = "short")
 
 # STLLBIRTHS SPECIFIC
 

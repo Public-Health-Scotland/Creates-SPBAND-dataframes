@@ -23,9 +23,9 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 
 ### 3 - Read in source data ----
 
-### 3a - real numerators and LOS will come from NeoCareIn+ ----
+### 3a - real numbers, gestations and LOS will come from NeoCareIn+ ----
 
-# The numerator contains a subset of the number of babies born alive at 30-32 weeks gestation who were admitted to a neonatal unit. The baby may have had a stay in multiple neonatal units. The LOS in neonatal care is added to their birth gestation to calculate their corrected gestational age at discharge:
+# The cohort contains a subset of the number of babies born alive at 30-32 weeks gestation who were admitted to a neonatal unit. The baby may have had a stay in multiple neonatal units. The LOS in neonatal care is added to their birth gestation to calculate their corrected gestational age at discharge:
 
 # 30+0 to 32+6 weeks at birth
 # calculate LOS (days between date of delivery and date of discharge from neonatal care)
@@ -189,7 +189,7 @@ count_rows <- nrow(babies_raw)
 numbers <- summarise(babies_raw, .by = c(quarter_of_delivery, gestation_weeks), count = n()
                                          )
 
-write.xlsx(numbers, file.path(data_path, "number of live births admitted to neonatal care by gestation.xlsx"))
+write.xlsx(numbers, file.path(data_path, "number of babies born at 30-32 weeks admitted to neonatal care.xlsx"))
 
 # generate a random number of days (0-6) to add to the gestation in weeks
 
@@ -202,13 +202,13 @@ babies_30_32_admitted <- babies_raw %>%
          corrected = round(gestation + days_in_neonatal/7, 2),
          discharge_date = date_of_delivery + days_in_neonatal
   ) %>% 
-    arrange(discharge_date) %>% 
+  arrange(discharge_date) %>% 
   mutate(quarter_of_discharge = as.Date(as.yearqtr(discharge_date)),
          quarter_of_discharge_label = qtr(ymd(discharge_date), format = "short"),
          quarter_of_discharge_label = factor(quarter_of_discharge_label,
-                                          levels = unique(quarter_of_discharge_label),
-                                          ordered = TRUE)
-         )
+                                             levels = unique(quarter_of_discharge_label),
+                                             ordered = TRUE)
+  )
 
 dates <- babies_30_32_admitted %>% 
   group_by(quarter_of_delivery, quarter_of_discharge) %>% 
@@ -216,16 +216,37 @@ dates <- babies_30_32_admitted %>%
 
 # calculate measure_value_mean and measure_value_median corrected gestation at discharge over quarters
 
+# babies_30_32_discharged_from_neocare <- babies_30_32_admitted %>% 
+#   group_by(dataset, hbtype, hbname, quarter_of_discharge, quarter_of_discharge_label, period, measure_cat = "discharged from neocare") %>% # quarters
+#   summarise(measure = "MEDIAN CORRECTED GEST AGE",
+#             measure_value_median = round(median(corrected, na.rm = TRUE), 2),
+#             measure_value_mean = round(mean(corrected, na.rm = TRUE), 2),
+#             num = n(),
+#             suffix = "weeks"
+#   ) %>% 
+#   select(dataset, measure, hbtype, hbname, period, quarter_of_discharge, quarter_of_discharge_label, measure_cat, num, measure_value = measure_value_median, suffix, measure_value_mean) %>% 
+#   ungroup()
+
 babies_30_32_discharged_from_neocare <- babies_30_32_admitted %>% 
-  group_by(dataset, hbtype, hbname, quarter_of_discharge, quarter_of_discharge_label, period, measure_cat = "discharged from neocare") %>% # quarters
+  group_by(dataset, hbtype, hbname, date = quarter_of_discharge, date_label = quarter_of_discharge_label, period) %>%  
   summarise(measure = "MEDIAN CORRECTED GEST AGE",
-            measure_value_median = round(median(corrected, na.rm = TRUE), 2),
-            measure_value_mean = round(mean(corrected, na.rm = TRUE), 2),
-            num = n(),
-            suffix = "weeks"
+            `median corrected gestational age` = round(median(corrected, na.rm = TRUE), 2),
+            #measure_value_mean = round(mean(corrected, na.rm = TRUE), 2),
+            `number of babies` = n()
+            #suffix = "weeks"
   ) %>% 
-  select(dataset, measure, hbtype, hbname, period, quarter_of_discharge, quarter_of_discharge_label, measure_cat, num, measure_value = measure_value_median, suffix, measure_value_mean) %>% 
+  pivot_longer(cols = `median corrected gestational age`: `number of babies`,
+               names_to = "measure_cat",
+               values_to = "measure_value"
+               ) %>% 
+  mutate(suffix = if_else(measure_cat == "median corrected gestational age", "weeks", NA)
+         ) %>% 
+  select(dataset, measure, hbtype, hbname, period, date, date_label, measure_cat, measure_value, suffix) %>% 
   ungroup()
+
+babies_30_32_discharged_from_neocare <- left_join(babies_30_32_discharged_from_neocare, metadata, 
+                                                  by = c("measure", "measure_cat")) %>% 
+  janitor::remove_empty(which = "cols")
 
 saveRDS(babies_30_32_discharged_from_neocare, paste0(dashboard_dataframes_folder, "/", "babies-30-32-discharged-from-neocare.rds"))
 
