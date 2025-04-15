@@ -1,7 +1,8 @@
 ###
-# Late pre-term and term/post-term admissions to a neonatal unit by BAPM level of care 
-# Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
-# Sourced from the Maternity Team's SMR02 data file [and the NeoCareIn+ datamart]
+# Late pre-term and term/post-term admissions to a neonatal unit by highest level of care 
+# Want to reduce the avoidable separation of mother and baby
+# Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND
+# Sourced from the Maternity Team's SMR02 data file and the NeoCareIn+ datamart
 # Bev Dodds
 # 10 October 2024
 # Last update by Bev Dodds
@@ -21,7 +22,7 @@ source("code/1 - Housekeeping code to be updated each refresh.R")
 
 ### 2 - Initialise variables ----
 
-BAPM_LOC_runchart_categories <- c("intensive care", "high dependency care", "special care")
+BAPM_LOC_runchart_categories <- c("intensive care", "high dependency care", "special care", "normal care")
 
 BAPM_LOC_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late pre-term
                                   "between 37 and 42 weeks (inclusive)") # term/post-term
@@ -30,7 +31,7 @@ BAPM_LOC_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late 
 
 ### 3a - real numerator will come from NeoCare+ ----
 
-# The numerator contains a subset of the number of live born babies admitted to a neonatal unit (first admission only). These babies are categorised by their gestation at admission:
+# The numerator contains a subset of the number of live born babies admitted to a neonatal unit (first admission only). These babies are categorised by their gestation at birth:
 
 # 34+0 to 36+6 weeks (late pre-term)
 # 37+0 to 42+6 weeks (term and post-term)
@@ -39,20 +40,102 @@ BAPM_LOC_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late 
 # Intensive care
 # High dependency care
 # Special care
+# Normal care (could be Special care + parent present)
 
 # will need to select first admission (CHI/Baby ID and date of admission)
-# at 34-36 weeks and 37-42 weeks gestation (gestation in weeks)
+# where baby was born in Scotland at 34-36 weeks and 37-42 weeks gestation (gestation in weeks)
 
-# Baby CHI or encrypted CHI (check no repeats)
-# Date of birth
-# Gestation at delivery (completed weeks? or completed weeks plus completed days?)
-# Admission date (want first admission date) >= 2017
-# Quarter - will be derived as quarter beginning (of admission)
-# Gestation at admission - calculated from Gestation at delivery + days between(date of admission, date of delivery)
-# Gestation group - calculated as below based on Gestation at admission
-# Highest level of care (BAPM spec) - use BAPM (2011) level of care - want only the highest value 1 - INTENSIVE CARE, 2 - HIGH DEPENDENCY CARE, 3 - SPECIAL CARE (IGNORE 4 - NORMAL CARE)
+# Variables required from NeoCareIn+
+# Born in Scotland = location_of_delivery_code [char] maps to Scottish NHS Board
+# Baby CHI or encrypted CHI (check no repeats) = baby_national_id [char]
+# Date of birth = baby_birth_date_time [DateTime] >= 01 Jan 2018 00:00
+# Gestation at delivery (completed weeks) [integer]
+# First admission date >= 01 Jan 2018 00:00 = date_time_of_admission [DateTime] not more # than 24 hours following birth to include BBA
+# Episode = episode_number [integer]
+# Discharged from neonatal care (dead or alive) = date_time_of_discharge [DateTime]
+# Ward Location = highest_level_of_care [char]
+
+# Quarter - will be derived as quarter beginning (of birth) = date
+# Gestation group - derived based on Gestation at birth = gest_grp [derived]
+# Highest level of care (BAPM spec) - use BAPM (2011) level of care - want only the highest value 1 - INTENSIVE CARE, 2 - HIGH DEPENDENCY CARE, 3 - SPECIAL CARE, 4 - NORMAL CARE = bapm2011_level_of_care [char] - will need to check over all days in episode
+
+# Exclusions
+# Babies born outwith Scotland
+# Babies admitted from home (if they have already been discharged home) i.e. admitted more than 24 hours after birth
+# Definitely don't want Ward Location = highest_level_of_care [char] 3, 8; if baby spends all days in > 1 (Neonatal unit) exclude
+# Babies with a missing gestation at birth
+# Babies with a missing BAPM2011 level of care (even one?)
+# Babies with a missing discharge date
+# Any subsequent episodes of care 
+
+# Investigate how many babies are in Ward Location = 2 their entire stay
+# Investigate whether Ward Location (highest_level_of_aare) correlates with bapm2011_level_of_care
+# Investigate whether there are missing discharge dates where there are no recent daily records
+
+# Units differ in practice - some babies transferred to transitional care are placed onto 
+# BAdgerNet Maternity
 
 # perform counts on this data (section 5)
+
+
+### Code to access tables in Denodo environment ###
+
+# Install packages (run one-time if not already installed)
+
+# install.packages("DBI")
+# install.packages("odbc")
+# install.packages("dplyr")
+
+# Read in the package libraries (every time) ----
+
+library(DBI)
+library(odbc)
+library(dplyr)
+
+# Open a connection to DVPREPROD (test environment) or DVPROD (production environment) ----
+denodo_connect <- suppressWarnings(
+  dbConnect(
+    odbc(),
+    dsn = "DVPREPROD",
+    uid = "beverd01",
+    pwd = .rs.askForPassword("Enter your LDAP password"))
+)
+
+df <- as_tibble(
+  dbGetQuery(denodo_connect,
+             "SELECT * from matneo.matneo_neocare_episode a
+             LEFT JOIN matneo.matneo_extract_log b
+             ON a.seer_source_extract_id = b.seer_source_extract_id
+             LIMIT 100")) 
+
+# Complete Episodes 
+
+# Get only complete episodes from matneo_neocare_episode. 
+
+# "SELECT * FROM matneo.matneo_neocare_episode WHERE date_of_discharge IS NOT NULL LIMIT 100" 
+
+# Get only day data that is part of a complete episode. 
+
+# "SELECT * FROM matneo.matneo_neocare_day a INNER JOIN matneo.matneo_neocare_episode b ON a.neocare_episode_unique_id = b.neocare_episode_unique_id WHERE b.date_of_discharge IS NOT NULL LIMIT 100" #
+
+# Transform data from ‘Long’ to ‘Wide’ in POSIT 
+
+# Assuming the query about is stored in a dataframe named ‘df’.  
+
+# df %>% mutate(val = 1) %>%  
+# 
+#   pivot_wider(, id_cols = c(entity_id, mother_upi, baby_upi), names_from = reference_data_description, values_from = val ) 
+
+# Read in data from matneo_location (reference file) ----
+
+locations <- as_tibble(
+  dbGetQuery(denodo_connect,
+             "SELECT * 
+             FROM matneo.matneo_location")
+  ) %>%
+  # only need records missing a national location code; do not need the system-generated "blank" record (all NAs)
+  filter(!is.na(data_provider) & is.na(national_location_code)) %>% 
+  select(- location_key) # don't need this column
 
 ### 3b - real denominator will come from SMR02 ----
 
@@ -60,10 +143,10 @@ BAPM_LOC_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late 
 # numbir not necessarily = 1
 # gestation at delivery 34-36 weeks and 37-42 weeks
 
-# year in the SMR02 extract is based on date of discharge >= 2018 & condis == 3 & outcome1 == 1 (as below)
+# date_of_delivery >= 01 Jan 2018 & condis == 3 & outcome1 == 1 (as below)
 # estgest = na_if 99 - this is gestation at delivery 
-# Gestation group - calculated as below based on Gestation at discharge? /delivery?
-# Quarter - based on quarter beginning (of discharge? delivery?)
+# Gestation group - derived based on Gestation at delivery
+# Quarter - based on quarter beginning (of delivery)
 
 # perform counts on this data (section 5)
 
@@ -151,45 +234,46 @@ babies_raw$gest_grp <-
                     "between 37 and 42 weeks (inclusive)") # term and post-term
   )
 
-# generate a random BAPM level (1-3) to add to the dataset to create a subset (fake NeoCare dataset)
+# generate a random BAPM level (1-4) to add to the dataset to create a subset (fake NeoCare dataset)
 
 set.seed(7)
-ss <- sample(1:4, 
+ss <- sample(1:5, 
              size = nrow(babies_raw),
              replace = TRUE,
-             prob = c(0.022, 0.023, 0.052, 0.903)) # using overall percentages from Births in Scotland for the totals for 2018/19 - 2023/24 - sums to 1 to make proportions right
+             prob = c(0.022, 0.023, 0.052, 0.050, 0.853)) # using overall percentages from Births in Scotland for the totals for 2018/19 - 2023/24 - sums to 1 to make proportions right
 
 ic <- babies_raw[ss == 1,] %>% mutate(BAPM_level_of_care = 1)
 hdu <- babies_raw[ss == 2,] %>% mutate(BAPM_level_of_care = 2)
 sc <- babies_raw[ss == 3,] %>% mutate(BAPM_level_of_care = 3)
-others <- babies_raw[ss == 4,] %>% mutate(BAPM_level_of_care = 9)
+nc <- babies_raw[ss ==4,] %>% mutate(BAPM_level_of_care = 4)
+others <- babies_raw[ss == 5,] %>% mutate(BAPM_level_of_care = 9)
 
-BAPM_babies <- bind_rows(ic, hdu, sc) # roughly 10% - no weighting for gestation
+BAPM_babies <- bind_rows(ic, hdu, sc, nc) # roughly 15% - no weighting for gestation
 
 # generate a random number of days (0-7) to add to the date_of_delivery -> date of admission to neonatal care
 
-count_rows <- nrow(BAPM_babies)
+# count_rows <- nrow(BAPM_babies)
+# 
+# set.seed(1)
+# 
+# BAPM_babies <- BAPM_babies %>% 
+#   mutate(admission_delay_days = round(runif(n = count_rows, min = 0, max = 7), 0),
+#          admission_date = date_of_delivery + admission_delay_days) %>% 
+#   arrange(admission_date) %>% 
+#   mutate(quarter_of_admission = as.Date(as.yearqtr(admission_date)),
+#          quarter_of_admission_label = qtr(ymd(admission_date), format = "short"),
+#          quarter_of_admission_label = factor(quarter_of_admission_label,
+#                                           levels = unique(quarter_of_admission_label),
+#                                           ordered = TRUE)
+#          )
 
-set.seed(1)
-
-BAPM_babies <- BAPM_babies %>% 
-  mutate(admission_delay_days = round(runif(n = count_rows, min = 0, max = 7), 0),
-         admission_date = date_of_delivery + admission_delay_days) %>% 
-  arrange(admission_date) %>% 
-  mutate(quarter_of_admission = as.Date(as.yearqtr(admission_date)),
-         quarter_of_admission_label = qtr(ymd(admission_date), format = "short"),
-         quarter_of_admission_label = factor(quarter_of_admission_label,
-                                          levels = unique(quarter_of_admission_label),
-                                          ordered = TRUE)
-         )
-
-BAPM_babies <- BAPM_babies %>% 
-  filter(quarter_of_admission <= cut_off_date_Qtrly) # don't publish incomplete data
+# BAPM_babies <- BAPM_babies %>% 
+#   filter(quarter_of_admission <= cut_off_date_Qtrly) # don't publish incomplete data
   
 # aggregate BAPM_babies by quarter, gest_grp and BAPM_level_of_care
 
 admissions_to_neocare <- summarise(BAPM_babies,
-                                   .by = c(dataset, hbtype, hbname, quarter_of_admission, period, gest_grp, BAPM_level_of_care),
+                                   .by = c(dataset, hbtype, hbname, quarter_of_delivery, period, gest_grp, BAPM_level_of_care),
                                    count = n())
 
 # aggregate BAPM_babies by quarter and gest_grp to get total numbers admitted to neonatal care
@@ -197,13 +281,13 @@ admissions_to_neocare <- summarise(BAPM_babies,
 all_admissions_to_neocare <- BAPM_babies %>%
   mutate(BAPM_level_of_care = 0) %>% 
   summarise(.,
-            .by = c(dataset, hbtype, hbname, quarter_of_admission, period, gest_grp, BAPM_level_of_care),
+            .by = c(dataset, hbtype, hbname, quarter_of_delivery, period, gest_grp, BAPM_level_of_care),
             count = n())
   
 # add the two files together - these are the numerators
 
 admissions_to_neocare <- bind_rows(all_admissions_to_neocare, admissions_to_neocare) %>% 
-  arrange(quarter_of_admission, gest_grp, BAPM_level_of_care)
+  arrange(quarter_of_delivery, gest_grp, BAPM_level_of_care)
 
 # aggregate babies_raw by quarter and gest_grp to get denominators
 
@@ -212,16 +296,16 @@ live_babies <- summarise(babies_raw,
                         babies = n())
 
 # rename quarter_of_delivery to quarter_of_admission to enable matching
-
-live_babies <- live_babies %>% 
-  mutate(quarter_of_admission = quarter_of_delivery,
-         quarter_of_delivery = NULL)
+# 
+# live_babies <- live_babies %>% 
+#   mutate(quarter_of_admission = quarter_of_delivery,
+#          quarter_of_delivery = NULL)
 
 # append live_babies in same quarter to calculate percentages
 
 gestation_by_BAPM_LOC <- left_join(admissions_to_neocare, live_babies)
 
-# now add counts of live babies to BAPM_level_of_care for plotly charts in dashbboard
+# now add counts of live babies to BAPM_level_of_care for plotly charts in dashboard
 
 live_babies <- live_babies %>% 
   mutate(BAPM_level_of_care = 4) %>% 
@@ -231,7 +315,7 @@ live_babies <- live_babies %>%
 
 gestation_by_BAPM_LOC <- 
   bind_rows(gestation_by_BAPM_LOC, live_babies) %>% 
-  rename(date = quarter_of_admission,
+  rename(date = quarter_of_delivery,
          subgroup_cat = gest_grp,
          den = babies,
          measure_cat = BAPM_level_of_care,

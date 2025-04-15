@@ -1,7 +1,7 @@
 ###
 # Median corrected gestational age at discharge from neonatal care 
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
-# Sourced from the [NeoCareIn+ datamart] Maternity Team's SMR02 data file and SMR01?
+# Sourced from the NeoCareIn+ datamart
 # Bev Dodds
 # 20 November 2024
 # Last update by Bev Dodds

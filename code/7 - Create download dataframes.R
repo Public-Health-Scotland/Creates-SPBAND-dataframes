@@ -192,7 +192,9 @@ names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
     c("tears",
       "gestation_at_termination") ~ 8,
     "gestation_at_booking" ~ 8,
-    "type_of_birth" ~ 9,
+    "median_corrected_gestational_age" ~ 5,
+    "admissions_to_neocare_by_level_of_care" ~ 8
+    #"type_of_birth" ~ 9,
     .default = 7
   )
 
