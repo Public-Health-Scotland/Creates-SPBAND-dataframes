@@ -8,7 +8,7 @@
 # Latest update description: removed admission reason = 26 (transfer after delivery in another hospital)
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on Posit Workbench
-# Version of R - 4.1.2
+# Version of R - 4.4.2
 # Reads in SMRA SMR02_PI live births and produces a variety of tables/charts 
 # Approximate run time - <5 minutes
 ###

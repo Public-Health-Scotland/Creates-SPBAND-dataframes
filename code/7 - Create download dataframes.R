@@ -9,7 +9,7 @@
 # Latest update description: added admissions to neocare measure into downloads
 # Type of script - preparation and data extraction for dashboards
 # Written/run on R Studio Server
-# Version of R - 4.2.1
+# Version of R - 4.4.2
 # Reads pre-created download data from 2, 3, 4 and 5
 # produces Excel spreadsheets in accessible format
 # Approximate run time - <5 minutes

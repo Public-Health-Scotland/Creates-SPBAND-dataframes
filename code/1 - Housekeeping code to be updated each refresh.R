@@ -3,12 +3,12 @@
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Bev Dodds
 # 12 July 2023
-# Last update: 07 May 2024
+# Last update: 15 April 2025
 # Last update by: Bev Dodds
-# Latest update description: Amended code to deal with grouped Island Boards in average gestation at termination measure
+# Latest update description: removed the miniapp; all packages updated due to the change in version of R and move to RStudio Pro
 # Type of script - preparation
 # Written/run on Posit Workbench
-# Version of R - 4.1.2
+# Version of R - 4.4.2
 # Initialises packages to be used, date parameters and file locations
 # Will be called in relevant data creation code
 # # Approximate run time - <1 minute
@@ -36,20 +36,20 @@ source(here("code", "functions.R"))
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2024-12-13") # change this each time the data is updated
+refresh_date <- as.Date("2025-03-20") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
-cut_off_date <- ymd("2024-09-01") # month beginning, usually increments by 3 months
-cut_off_date_ABC <- ymd("2024-11-01") # month beginning (ABC more timely than SMR02)
-cut_off_date_Qtrly <- ymd("2024-07-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
+cut_off_date <- ymd("2024-12-01") # month beginning, usually increments by 3 months
+cut_off_date_ABC <- ymd("2025-02-01") # month beginning (ABC more timely than SMR02)
+cut_off_date_Qtrly <- ymd("2024-10-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
 
 # create a vector with "complete" years (for multi indicator overview)
 # update as necessary (usually in the April and October refreshes)
 
-factor_labels_year <- c("2023", "2022", "2021", "2020", "2019", "2018", "2017",
+factor_labels_year <- c("2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017",
                         "2023/24", "2022/23", "2021/22", "2020/21", "2019/20", "2018/19", "2017/18"
-                        )
+)
 
 # metadata file - for num, den, measure_value descriptions
 
@@ -75,7 +75,7 @@ file.exists(terminations_filename)
 
 # update file name that contains NRS quarterly data (published)
 
-NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2024 Q3 - Table Q1.xlsx"
+NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2024 Q4 - Table Q1.xlsx"
 
 file.exists(NRS_filename)
 

@@ -9,7 +9,7 @@
 # Latest update description: initialised code
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
-# Version of R - 4.2.1
+# Version of R - 4.4.2
 # Reads in NRS Excel spreadsheet with pre-release stillbirth and infant death data and
 # produces tables and charts - Scotland only, Jan-Mar 2016 - latest quarter
 # Note that 2020 quarterly data is not available so the annual figure is used

@@ -4,13 +4,12 @@
 # Pregnancies booked, Average gestation at booking, Terminations, Average gestation at termination
 # Sourced from the Maternity Team's SMR02 data file, the ABC base file and the Terminations data file
 # Bev Dodds
-# Last update: 21 May 2024
+# Last update: 15 April 2025
 # Last update by: Bev Dodds
-# Latest update description: Finalised the "grouped" Island Board data for"Gestation at termination" and
-# added a working "miniapp" to view data in charts before exporting it to the dashboard project 
+# Latest update description: Changed the completeness code to use HBTREAT
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
-# Version of R - 4.1.2 - note use of dplyr 1.1.0
+# Version of R - 4.4.2
 # Reads in SMR02 singleton live births and produces a variety of tables/charts 
 # Approximate run time - 5 minutes
 ####
@@ -202,9 +201,9 @@ rm(terminations_summary)
 
 ### 7 - Check completeness of data ---- 
 # each month versus the average of the previous 12 months
-# BOARD OF RESIDENCE ONLY, excludes "Unknown"
+# BOARD OF TREATMENT ONLY, excludes "Unknown"
 
-completeness <- filter(analysis_raw, hbrname != "Unknown") %>% 
+completeness <- filter(analysis_raw, hbtname != "Unknown") %>% 
   mutate(date = 
            if_else(
              dataset == "SMR02",
@@ -212,9 +211,9 @@ completeness <- filter(analysis_raw, hbrname != "Unknown") %>%
              month_beginning
            )
          ) %>% 
-  group_by(dataset, hbrname, calendar_year, date) %>% 
+  group_by(dataset, hbtname, calendar_year, date) %>% 
   summarise(count = n()) %>%
-  group_by(dataset, hbrname) %>%
+  group_by(dataset, hbtname) %>%
   arrange(dataset, calendar_year, date, .by_group = TRUE) %>%
   mutate(lag_count = lag(count, 1),
          `12_month_mean` = 
@@ -234,12 +233,12 @@ completeness <- filter(analysis_raw, hbrname != "Unknown") %>%
   arrange(desc(dataset))
 
 percent_complete <- select(
-  completeness, c(dataset, hbrname, YEAR = calendar_year, date, perc_complete)) %>% 
+  completeness, c(dataset, hbtname, YEAR = calendar_year, date, perc_complete)) %>% 
   filter(!is.na(perc_complete)) %>% 
   pivot_wider(names_from = date, values_from = perc_complete)
 
 count <- select(
-  completeness, c(dataset, hbrname, YEAR = calendar_year, date, count)) %>%
+  completeness, c(dataset, hbtname, YEAR = calendar_year, date, count)) %>%
   pivot_wider(names_from = date, values_from = count)
 
 # write out completeness stats
