@@ -4,9 +4,9 @@
 # Pregnancies booked, Average gestation at booking, Terminations, Average gestation at termination
 # Sourced from the Maternity Team's SMR02 data file, the ABC base file and the Terminations data file
 # Bev Dodds
-# Last update: 15 April 2025
+# Last update: 15 July 2025
 # Last update by: Bev Dodds
-# Latest update description: Changed the completeness code to use HBTREAT
+# Latest update description: Updated quarterly measures to show post-pandemic median (Jul-Sep 22 to Apr-Jun 25)
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on R Studio Server
 # Version of R - 4.4.2
@@ -58,7 +58,7 @@ births_raw <-
   filter(year>= 2017 & condis == 3 & numbir == 1) %>%  # maternity record singleton births
   mutate(dataset = "SMR02",
          date = ymd(dodis),
-         estgest = na_if(estgest, 99)) %>% 
+         estgest = na_if(estgest, 99)) %>%
   select(dataset, date, hbrcode = hb2019, hbrname = hb2019name, hbtcipher = hbt,
          outcome = outcome1, outcome_name = outcome1name,
          type_of_birth = model1, type_of_birth_name = model1name, induced = induce1,
@@ -312,13 +312,18 @@ rm(analysis_both, analysis_M, analysis_Q, analysis_FY, analysis_CY)
 
 # 10a - Split analysis_ALL into component parts ----
 
-# remove data that will be incomplete using cut off dates
+# remove data that will be incomplete using cut off dates, assign median_name
 
 births <- filter(analysis_ALL,
                  dataset == "SMR02",
                  month_beginning <= cut_off_date) |>
-  mutate(median_name = if_else(date <= "2019-12-31" &
-                                 period == "Q", "pre-pandemic median", NA)) |>  # pre-pandemic median only (for now)
+  mutate(
+    median_name = case_when(
+      period == "Q" & quarter <= as.Date("2019-10-01") ~ "pre-pandemic median",
+      period == "Q" & between(quarter, as.Date("2022-07-01"), as.Date("2025-04-01")) ~ "post-pandemic median",
+      .default = NA
+      )
+    ) |>
   janitor::remove_empty("cols")
 
 bookings_terminations <-
@@ -336,12 +341,9 @@ bookings_terminations <-
   ) %>%
   mutate(
     median_name = case_when(
-      month_beginning <= "2020-02-01" & period == "M" ~ "pre-pandemic median",
-      between(
-        month_beginning,
-        as.Date("2022-07-01"),
-        as.Date("2024-06-01")
-      ) & period == "M" ~ "post-pandemic median",
+      period == "M" & month_beginning <="2020-02-01" ~ "pre-pandemic median",
+      period == "M" & between(
+        month_beginning, as.Date("2022-07-01"), as.Date("2024-06-01")) ~ "post-pandemic median",
       .default = NA
     )
   ) |>
@@ -875,7 +877,21 @@ remaining_dataframe <- remaining_dataframe %>%
   filter(drop == FALSE) %>% 
   select(- drop)
 
+# TEMP SECTION FOR TESTING ----
+
 # temporarily copy some data to check extended post-pandemic median 
+
+# for quarterly SMR02 measures
+
+temp <- filter(remaining_dataframe, between(date, as.Date("2022-04-01"), as.Date("2022-12-01")) &
+                 period == "Q") |>
+  mutate(date = date %m+% months(36),
+         median_name = if_else(date <= as.Date("2025-04-01"), 
+                               "post-pandemic median",
+                               NA)
+         )
+
+# for monthly gestation measures
 
 # temp <- filter(remaining_dataframe, between(date, as.Date("2020-02-01"), as.Date("2020-08-01")) &
 #                  period == "M" & measure %in% c("GESTATION AT BOOKING", "GESTATION AT TERMINATION")
@@ -887,8 +903,39 @@ remaining_dataframe <- remaining_dataframe %>%
 #                                "post-pandemic median",
 #                                NA)
 #   )
-# 
-# remaining_dataframe <- bind_rows(remaining_dataframe, temp)
+
+remaining_dataframe <- bind_rows(filter(remaining_dataframe, period %in% c("M", "FY", "CY") | period == "Q" & date < as.Date("2025-04-01")), temp) %>% 
+  arrange(dataset, measure, hbtype, hbname, period, date)
+
+# calculate overall range of dates - need to review these
+
+date_range_M <- as.Date(range(filter(remaining_dataframe, period == "M")$date))
+
+date_range_Q <- as.Date(range(filter(remaining_dataframe, period == "Q")$date))
+
+date_range <- range(remaining_dataframe$date)
+
+# recreate a vector for the chart labels to force first label to Jan-Mar 2017
+
+x_date_labels_M <-
+  seq(
+    from = min(date_range_M),
+    to = max(date_range_M),
+    by = "2 months"
+  )
+
+x_date_labels_Q <-
+  seq(
+    from = min(date_range_Q),
+    to = max(date_range_Q),
+    by = "3 months"
+  )
+
+x_date_labels_Q2 <- 
+  qtr(x_date_labels_Q, format = "short")
+
+# END OF TEMP SECTION ----
+
 
 ### 12d - Create runchart data frame ----
 
@@ -899,9 +946,9 @@ runchart_dataframe <- filter(remaining_dataframe, measure_cat %in% runchart_cate
 
 runchart_dataframe$median_name <- factor(runchart_dataframe$median_name,
                       levels = c("pre-pandemic median", "revised median", "post-pandemic median"),
-                      labels = c("pre-pandemic median", # to Oct-Dec 2019 / to end Feb 2020
+                      labels = c("pre-pandemic median", # to Oct-Dec 2019 (Q) / to end Feb 2020 (M)
                                  "revised median", # FV/TAY (Gestation at booking)
-                                 "post-pandemic median") # from Jul 2022 to end Jun 2024
+                                 "post-pandemic median") # from Jul-Sep 2022 to Apr-Jun 2025 (Q) / from Jul 2022 to end Jun 2024 (M)
                       ) 
 
 ### i - MEDIAN of measure_value ----
@@ -961,10 +1008,11 @@ runchart_dataframe <- runchart_dataframe |>
     !is.na(median) & !is.na(extended) & is.na(lead(median)),
     median, NA),
     extended = na.locf(extended, na.rm = FALSE),
-    extended = if_else(median_name == "post-pandemic median" & date < as.Date("2024-06-01"),
-                       NA,
-                       extended)
-    )
+    extended = case_when(
+      date == max(date) & period == "Q" & median_name == "post-pandemic median" & date < as.Date("2025-07-01") ~ NA,
+      date == max(date) & period == "M" & median_name == "post-pandemic median" & date < as.Date("2024-07-01") ~ NA,
+      .default = extended)
+  )
 
 # pivot wider to split median and extended into separate columns based on median_name
 
