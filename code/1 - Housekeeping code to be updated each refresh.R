@@ -40,9 +40,9 @@ refresh_date <- as.Date("2025-06-12") # change this each time the data is update
 
 # set cut-off date - what month are we happy to publish to?
 
-cut_off_date <- ymd("2025-04-01") # month beginning, usually increments by 3 months
+cut_off_date <- ymd("2025-03-01") # month beginning, usually increments by 3 months
 cut_off_date_ABC <- ymd("2025-05-01") # month beginning (ABC more timely than SMR02)
-cut_off_date_Qtrly <- ymd("2025-04-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
+cut_off_date_Qtrly <- ymd("2025-01-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
 
 # create a vector with "complete" years (for multi indicator overview)
 # update as necessary (usually in the April and October refreshes)
