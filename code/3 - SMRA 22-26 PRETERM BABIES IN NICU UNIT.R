@@ -27,7 +27,7 @@ smra_connect <- suppressWarnings(
   dbConnect(
     odbc(),
     dsn = "SMRA",
-    uid = rstudioapi::showPrompt(title = "Username", message = "Username:", default = "beverd01"),
+    uid = .rs.askForPassword("SMRA Username:"),
     pwd = .rs.askForPassword("SMRA Password:"),
     port = "1527",
     host = "nssstats01.csa.scot.nhs.uk",
