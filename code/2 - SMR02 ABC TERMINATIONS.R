@@ -883,13 +883,13 @@ remaining_dataframe <- remaining_dataframe %>%
 
 # for quarterly SMR02 measures
 
-temp <- filter(remaining_dataframe, between(date, as.Date("2022-04-01"), as.Date("2022-12-01")) &
-                 period == "Q") |>
-  mutate(date = date %m+% months(36),
-         median_name = if_else(date <= as.Date("2025-04-01"), 
-                               "post-pandemic median",
-                               NA)
-         )
+# temp <- filter(remaining_dataframe, between(date, as.Date("2022-04-01"), as.Date("2022-12-01")) &
+#                  period == "Q") |>
+#   mutate(date = date %m+% months(36),
+#          median_name = if_else(date <= as.Date("2025-04-01"), 
+#                                "post-pandemic median",
+#                                NA)
+#          )
 
 # for monthly gestation measures
 
@@ -904,35 +904,35 @@ temp <- filter(remaining_dataframe, between(date, as.Date("2022-04-01"), as.Date
 #                                NA)
 #   )
 
-remaining_dataframe <- bind_rows(filter(remaining_dataframe, period %in% c("M", "FY", "CY") | period == "Q" & date < as.Date("2025-04-01")), temp) %>% 
-  arrange(dataset, measure, hbtype, hbname, period, date)
-
-# calculate overall range of dates - need to review these
-
-date_range_M <- as.Date(range(filter(remaining_dataframe, period == "M")$date))
-
-date_range_Q <- as.Date(range(filter(remaining_dataframe, period == "Q")$date))
-
-date_range <- range(remaining_dataframe$date)
-
-# recreate a vector for the chart labels to force first label to Jan-Mar 2017
-
-x_date_labels_M <-
-  seq(
-    from = min(date_range_M),
-    to = max(date_range_M),
-    by = "2 months"
-  )
-
-x_date_labels_Q <-
-  seq(
-    from = min(date_range_Q),
-    to = max(date_range_Q),
-    by = "3 months"
-  )
-
-x_date_labels_Q2 <- 
-  qtr(x_date_labels_Q, format = "short")
+# remaining_dataframe <- bind_rows(filter(remaining_dataframe, period %in% c("M", "FY", "CY") | period == "Q" & date < as.Date("2025-04-01")), temp) %>% 
+#   arrange(dataset, measure, hbtype, hbname, period, date)
+# 
+# # calculate overall range of dates - need to review these
+# 
+# date_range_M <- as.Date(range(filter(remaining_dataframe, period == "M")$date))
+# 
+# date_range_Q <- as.Date(range(filter(remaining_dataframe, period == "Q")$date))
+# 
+# date_range <- range(remaining_dataframe$date)
+# 
+# # recreate a vector for the chart labels to force first label to Jan-Mar 2017
+# 
+# x_date_labels_M <-
+#   seq(
+#     from = min(date_range_M),
+#     to = max(date_range_M),
+#     by = "2 months"
+#   )
+# 
+# x_date_labels_Q <-
+#   seq(
+#     from = min(date_range_Q),
+#     to = max(date_range_Q),
+#     by = "3 months"
+#   )
+# 
+# x_date_labels_Q2 <- 
+#   qtr(x_date_labels_Q, format = "short")
 
 # END OF TEMP SECTION ----
 

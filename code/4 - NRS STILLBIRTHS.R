@@ -33,9 +33,11 @@ use_live_plus_still_births <- c("stillbirths", "extended perinatal deaths")
 ## NRS_filename is initialised in the Housekeeping code
 
 NRS <- read.xlsx(NRS_filename,
-                 sheet = 1, startRow = 5, colNames = TRUE, cols = c(1:3, 10:21)) %>% 
+                 sheet = 1, startRow = 6, colNames = TRUE, cols = c(1:3, 10:21)) %>% # NRS added an extra line at the top of the table
   filter(Year >= 2016) %>% 
-  mutate(Quarter = str_trim(Quarter) # removes trailing white space in some entries
+  mutate(Quarter = str_trim(Quarter), # removes trailing white space in some entries
+         across(where(is.character), ~ sub("\\[l]", "", .)), # NRS introduced a footnote in the data table
+         across(ends_with("rate"), ~ as.numeric(.)) # change rate columns from character to numeric
          )
 
 names(NRS) <- to_snake_case(names(NRS)) # convert variable names to snake_case
@@ -123,11 +125,11 @@ NRS_timeseries <- NRS %>%
   select(year, quarter, date_label, date, ends_with("number"), ends_with("rate"), use_for_mean,
          flag_NA, - starts_with("perinatal")
          ) %>%
-  rename_with(., ~ gsub("_number", "", .x, fixed = TRUE)) %>% 
-  rename_with(., ~ gsub("_rate", "s_rate", .x, fixed = TRUE)) %>% # to make the same for measure_cat
+  rename_with(., ~ sub("_number", "", .x, fixed = TRUE)) %>% 
+  rename_with(., ~ sub("_rate", "s_rate", .x, fixed = TRUE)) %>% # to make the same for measure_cat
   # previously only showed rates, not numbers in download file
   # rename_with(., ~ gsub(".", " ", .x, fixed = TRUE)) %>% 
-  rename_with(., ~ gsub("post_neonatal", "post-neonatal", .x, fixed = TRUE)) # post-neonatal term is used in text for this indicator
+  rename_with(., ~ sub("post_neonatal", "post-neonatal", .x, fixed = TRUE)) # post-neonatal term is used in text for this indicator
 
 # pivot longer to match standard measure format
 
@@ -143,7 +145,7 @@ numbers <- NRS_timeseries %>%
 
 rates <- NRS_timeseries %>%
   select(year:date, stillbirths_rate: infant_deaths_rate, use_for_mean:flag_NA) %>% 
-  rename_with(., ~ gsub("_rate", "", .x, fixed = TRUE)) %>%
+  rename_with(., ~ sub("_rate", "", .x, fixed = TRUE)) %>%
   pivot_longer(
     cols = c(stillbirths:infant_deaths),
     names_to = "measure_cat",
