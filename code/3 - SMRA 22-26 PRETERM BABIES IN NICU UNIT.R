@@ -8,7 +8,7 @@
 # Latest update description: removed admission reason = 26 (transfer after delivery in another hospital)
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on Posit Workbench
-# Version of R - 4.1.2
+# Version of R - 4.4.2
 # Reads in SMRA SMR02_PI live births and produces a variety of tables/charts 
 # Approximate run time - <5 minutes
 ###
@@ -27,7 +27,7 @@ smra_connect <- suppressWarnings(
   dbConnect(
     odbc(),
     dsn = "SMRA",
-    uid = rstudioapi::showPrompt(title = "Username", message = "Username:", default = "beverd01"),
+    uid = .rs.askForPassword("SMRA Username:"),
     pwd = .rs.askForPassword("SMRA Password:"),
     port = "1527",
     host = "nssstats01.csa.scot.nhs.uk",

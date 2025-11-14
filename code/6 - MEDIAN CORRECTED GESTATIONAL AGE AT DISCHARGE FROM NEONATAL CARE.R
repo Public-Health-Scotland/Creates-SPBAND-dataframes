@@ -8,7 +8,7 @@
 # Latest update description: initialised test code
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on Posit Workbench
-# Version of R - 4.1.2
+# Version of R - 4.4.2
 # Reads in SMR02 live births and mocks up lengths of stay to calculate corrected gestational ages
 # Approximate run time - <5 minutes
 ###
