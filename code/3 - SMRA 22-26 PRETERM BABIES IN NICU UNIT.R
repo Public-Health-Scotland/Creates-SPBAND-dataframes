@@ -23,15 +23,12 @@ library(odbc) # required to read in SMRA data
 
 # set up odbc connection to query SMRA
 
-smra_connect <- suppressWarnings(
-  dbConnect(
+smra_connect <- dbConnect(
     odbc(),
     dsn = "SMRA",
-    uid = .rs.askForPassword("SMRA Username:"),
-    pwd = .rs.askForPassword("SMRA Password:"),
-    port = "1527",
-    host = "nssstats01.csa.scot.nhs.uk",
-    SVC = "SMRA.nss.scot.nhs.uk"))
+    uid = Sys.getenv("USER"),
+    pwd = .rs.askForPassword("SMRA Password:")
+)
 
 ### 2 - Read in source data from SMRA SMR02_PI ----
 
@@ -194,7 +191,7 @@ extremely_preterm_data <- left_join(extremely_preterm_data, temp,
   )
   
 
-rm(temp) # tidy up
+rm(temp, preterm) # tidy up
 
 # add on suffix and metadata for num, den, measure
 
@@ -425,6 +422,8 @@ write.csv(summary, row.names = FALSE,
           file.path(data_path, paste0("summary of births at 22-26 weeks to ", 
                                    max(summary$date_label), ".csv"))
           )
+
+rm(preterm, non_NICU_preterm, summary) # tidy up
 
 ### - END OF SCRIPT ----
 
