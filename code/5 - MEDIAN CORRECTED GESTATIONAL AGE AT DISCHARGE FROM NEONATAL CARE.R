@@ -1,5 +1,5 @@
 ###
-# Median corrected gestational age at discharge from neonatal care 
+# Median corrected gestational age at discharge from specialist neonatal care 
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Sourced from NeoCareIn+ data views on the matneo data platform
 # Bev Dodds
