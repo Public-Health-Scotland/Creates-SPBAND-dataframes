@@ -118,7 +118,7 @@ analysis_raw <- bind_rows(births_raw, bookings_raw, terminations_raw) %>%
          hbtname = sub(" and ", " & ", hbtname)
          )
 
-# rm(births_raw, bookings_raw, terminations_raw) # tidy up
+rm(births_raw, bookings_raw, terminations_raw) # tidy up
 
 ### 4 - Recode all data to Scotland ----
 
@@ -135,7 +135,7 @@ scotland <- analysis_raw %>%
 
 analysis_raw <- bind_rows(scotland, analysis_raw) 
 
-# rm(scotland)
+rm(scotland)
 
 ### 5 - Create useful date parameters ----
          
@@ -349,7 +349,7 @@ bookings_terminations <-
   ) |>
   janitor::remove_empty("cols")
 
-# rm(analysis_raw, analysis_ALL) # tidy up
+rm(analysis_raw, analysis_ALL) # tidy up
 
 # 10b - Add BIRTHS measures ----
 # all based on singletons
@@ -641,6 +641,8 @@ gestation2 <-
 
 gestation <- rbind(gestation1, gestation2)
 
+rm(gestation1, gestation2)
+
 # recode "total_exc._unknown" to "between 18 and 44 weeks"
 
 gestation <- gestation %>% 
@@ -653,7 +655,11 @@ apgar5 <-
     variable = new_apgar5,
     suffix = "%", # for hovertext
     measure = "APGAR5"
-  ) 
+  )
+
+# tidy up
+
+rm(births)
 
 ### 11b - BOOKINGS and TERMINATIONS measures ----
 
@@ -758,6 +764,10 @@ av_gestation <- av_gestation |>
             den = sum(count) # den = total exc. unknown (gestations)
             )
 
+# tidy up
+
+rm(bookings_terminations)
+
 ### 12 - Create data frames to be used in SPBAND ----
 
 ### 12a - Create everything data frame to perform common calculations on ----
@@ -777,6 +787,10 @@ everything_dataframe <- left_join(everything_dataframe, metadata,
                                   by = c("measure", "measure_cat"))
 
 saveRDS(everything_dataframe, paste0(data_path, "/", "everything_dataframe.rds"))
+
+# tidy up
+
+rm(inductions, apgar5, tears, type_of_birth, gestation, bookings, terminations, av_gestation)
 
 # calculate overall range of dates - need to review these
 
@@ -1115,5 +1129,9 @@ save(annual_dataframe,
      factor_labels_year,
   file = paste0(dashboard_dataframes_folder, "/SMR02-ABC-Terminations.RData")
 )
+
+# tidy up
+
+rm(everything_dataframe, remaining_dataframe, medians)
 
 ### - END OF SCRIPT ----

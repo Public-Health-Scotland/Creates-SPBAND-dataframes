@@ -438,4 +438,8 @@ stillbirth_charts <- stillbirth_charts %>%
 
 stillbirth_charts
 
+# tidy up
+
+rm(NRS, numbers, denominators, rates, mean_rates)
+
 ### - END OF SCRIPT ----

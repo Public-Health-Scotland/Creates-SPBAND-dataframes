@@ -33,12 +33,14 @@ annual_dataframe <- readRDS(
 
 download_dataframe <- list_assign(download_dataframe,
                                   "STILLBIRTHS AND INFANT DEATHS" = readRDS(paste0(dashboard_dataframes_folder, "/stillbirths-infant-deaths-data.rds")),
+                                  
                                   "EXTREMELY PRETERM" = readRDS(paste0(dashboard_dataframes_folder, "/extremely-preterm-data.rds")),
-                                  "MULTI INDICATOR OVERVIEW" = annual_dataframe
-                                  # "ADMISSIONS TO NEOCARE" = distinct(
-                                  #   readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")
-                                            # )
-                                    # )
+                                  
+                                  "MULTI INDICATOR OVERVIEW" = annual_dataframe,
+                                  
+                                  # "ADMISSIONS TO NEOCARE BY LEVEL OF CARE" = readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")),
+                                  
+                                  "CORRECTED GESTATION AT DISCHARGE" = readRDS(paste0(data_path, "/", "babies_30_32_weeks_discharged_from_neocare_download_dataframe.rds"))
                                   )
 
 ### 2 - Make each dataset presentable ----
@@ -47,7 +49,7 @@ download_dataframe <- list_assign(download_dataframe,
 
 tidy_data_download <- function(measure_selection) {
   data <- download_dataframe[[measure_selection]]
-  
+
   # modify entries in `Board of` and Measure columns
   data <- data %>% 
     mutate(`Board of` = str_to_title(hbtype),
@@ -60,7 +62,8 @@ tidy_data_download <- function(measure_selection) {
              measure == "APGAR5" ~ "Apgar scores",
              measure == "EXTREMELY PRETERM" ~ "Location of extremely pre-term births",
              measure == "ADMISSIONS TO NEOCARE BY LEVEL OF CARE" ~ "Late pre-term and term/post-term admissions",
-             TRUE ~ str_to_sentence(measure)),
+             measure == "GESTATION AT DISCHARGE FROM NEONATAL CARE" ~ "Median corrected gestational age at discharge from specialist neonatal care",
+             .default = str_to_sentence(measure)),
            .keep = "unused") %>% 
     
     # rename the columns that are present in all datasets
@@ -98,8 +101,12 @@ tidy_data_download <- function(measure_selection) {
   
   if ("num" %in% names(data)) {
     data <- data %>%
-      rename(Numerator = num,
-             Denominator = den)
+      rename(Numerator = num)
+  }
+  
+  if ("den" %in% names(data)) {
+    data <- data %>%
+      rename(Denominator = den)
   }
   
   if ("suffix" %in% names(data)) {
@@ -122,10 +129,9 @@ tidy_data_download <- function(measure_selection) {
   if ("post_pandemic_median" %in% names(data)) {
     data <- data %>%
       rename(`Post-pandemic median` = post_pandemic_median)
-            # `Extended post-pandemic median` = extended_post_pandemic_median)
   }
   
-  if ("extended_post_pandemic_median" %in% names(data)) { # currently empty
+  if ("extended_post_pandemic_median" %in% names(data)) { 
     data <- data %>%
       rename(`Extended post-pandemic median` = extended_post_pandemic_median)
   }
@@ -191,6 +197,8 @@ names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
     c("tears",
       "gestation_at_termination") ~ 8,
     "gestation_at_booking" ~ 8,
+    "corrected_gestation_at_discharge" ~ 5,
+    "admissions_to_neocare_by_level_of_care" ~ 8,
     #"type_of_birth" ~ 9,
     .default = 7
   )
@@ -202,6 +210,8 @@ write_to_excel <- function(index) {
   
 # load in the correct template
   
+  #wb <- loadWorkbook(paste0(excel_templates_folder, "corrected_gestation_at_discharge_template.xlsx"))
+  
   wb <- loadWorkbook(
     paste0(excel_templates_folder, names(nice_download)[index],
            "_template.xlsx"
@@ -209,7 +219,7 @@ write_to_excel <- function(index) {
     )
 
 # write the data into the workbook as a table, putting it in an accessible table style
-
+  
   writeDataTable(wb,
                  sheet = 1,
                  x = nice_download[[index]],
