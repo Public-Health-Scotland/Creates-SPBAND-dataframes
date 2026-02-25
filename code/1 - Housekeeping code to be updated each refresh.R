@@ -3,9 +3,10 @@
 # Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Bev Dodds
 # 12 July 2023
-# Last update: 15 April 2025
+# Last update: 27 January 2026
 # Last update by: Bev Dodds
-# Latest update description: removed the miniapp; all packages updated due to the change in version of R and move to RStudio Pro
+# Latest update description: updated NeoCare measure "Admissions to NeoCare by highest level of care" 
+# to use real data; created some functions for common NeoCare analysis
 # Type of script - preparation
 # Written/run on Posit Workbench
 # Version of R - 4.4.2
@@ -38,7 +39,7 @@ source(here("code", "functions.R"))
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2025-12-10") # change this each time the data is updated
+refresh_date <- as.Date("2026-02-25") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
