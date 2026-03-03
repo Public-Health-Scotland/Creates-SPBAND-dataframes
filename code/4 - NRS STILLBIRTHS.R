@@ -69,12 +69,12 @@ NRS$date <- if_else(NRS$year == 2020 & NRS$quarter == "Full year", "2020", as.ch
 # create date_label - based on year and quarter 
 
 NRS <- NRS %>% 
-  mutate(date_label = case_match(quarter,
+  mutate(date_label = recode_values(quarter,
                                     "1st" ~ paste("Jan-Mar", year, sep = " "),
                                     "2nd" ~ paste("Apr-Jun", year, sep = " "),
                                     "3rd" ~ paste("Jul-Sep", year, sep = " "),
                                     "4th" ~ paste("Oct-Dec", year, sep = " "),
-                                    .default = as.character(year)
+                                    default = as.character(year)
                                     )
          )
 
@@ -95,11 +95,11 @@ NRS <- NRS %>%
 
 # reorder 2020 quarter values 1st, 2nd, Full year, 3rd, 4th - for chart x-axis label layout - to ensure break in line
 
-NRS$rowid <- case_match(NRS$rowid,
-                        17 ~ 19,
-                        18 ~ 17,
-                        19 ~ 18,
-                        .default = NRS$rowid)
+NRS$rowid <- recode_values(NRS$rowid,
+                           17 ~ 19,
+                           18 ~ 17,
+                           19 ~ 18,
+                           default = NRS$rowid)
 
 NRS <- arrange(NRS, rowid)
 
@@ -183,10 +183,10 @@ NRS_timeseries$measure_cat <- str_replace_all(NRS_timeseries$measure_cat, "_", "
 # if measure_cat in use_live_plus_still_births, den = live_births_plus_stillbirths_total
 
 NRS_timeseries <- NRS_timeseries %>% 
-  mutate(den = case_match(measure_cat,
-                          use_live_births ~ live_births_total,
-                          use_live_plus_still_births ~ live_births_plus_stillbirths_total,
-                          .default = NA)) %>% 
+  mutate(den = recode_values(measure_cat,
+                             use_live_births ~ live_births_total,
+                             use_live_plus_still_births ~ live_births_plus_stillbirths_total,
+                             default = NA)) %>% 
   relocate(den,
            .after = num) %>% 
   select(- starts_with("live")) # removes unnecessary columns
@@ -227,10 +227,10 @@ NRS_timeseries <- NRS_timeseries %>%
          dataset = "NRS VITAL EVENTS",
          hbname = "SCOTLAND",
          hbtype = "REGISTRATION",
-         suffix = case_match(measure_cat,
-                             use_live_births ~ "rate per 1,000 live births",
-                             use_live_plus_still_births ~ "rate per 1,000 total (live + still) births",
-                             .default = NA)
+         suffix = recode_values(measure_cat,
+                                use_live_births ~ "rate per 1,000 live births",
+                                use_live_plus_still_births ~ "rate per 1,000 total (live + still) births",
+                                default = NA)
          ) %>% 
   left_join(., metadata,
             by = c("measure", "measure_cat")

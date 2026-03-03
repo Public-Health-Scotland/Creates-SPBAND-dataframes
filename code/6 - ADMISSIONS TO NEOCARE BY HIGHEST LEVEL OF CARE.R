@@ -496,34 +496,20 @@ gestation_by_BAPM_LOC <-
   select(dataset, measure, hbtype, hbname, period, date, subgroup_cat, measure_cat, num, den, measure_value, suffix) %>% 
   arrange(date, subgroup_cat, measure_cat)
 
+# move babies born alive to denominator and measure_value (temporarily, to allow mwdian to be calculated)
+
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
+  mutate(den = if_else(measure_cat == '5', num, den),
+         num = if_else(measure_cat == '5', NA, num),
+         measure_value = if_else(measure_cat == '5', den, measure_value)
+         )
+
 # add post-pandemic median date range
 
 gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
   mutate(
     median_name = if_else(between(date, as.Date("2022-07-01"), as.Date("2025-04-01")), "post-pandemic median", NA)
       )
-
-# set factor levels for measure_cat
-
-gestation_by_BAPM_LOC$measure_cat =
-  factor(gestation_by_BAPM_LOC$measure_cat, levels = c(0, 1, 2, 3, 4, 5),
-         labels = c("all admissions to a neonatal unit",
-                    "intensive care",
-                    "high dependency care",
-                    "special care",
-                    "normal care",
-                    "babies born alive"),
-         ordered = TRUE
-  )
-
-# set factor levels for subgroup_cat
-
-gestation_by_BAPM_LOC$subgroup_cat =
-  factor(gestation_by_BAPM_LOC$subgroup_cat, levels = c(1, 2),
-         labels = c("between 34 and 36 weeks (inclusive)", # late pre-term
-                    "between 37 and 42 weeks (inclusive)"), # term/post-term
-         ordered = TRUE
-  )
 
 saveRDS(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
 
@@ -544,7 +530,7 @@ gestation_by_BAPM_LOC <- calculate_medians(dataset = gestation_by_BAPM_LOC,
                                            measure_value = measure_value,
                                            subgroup_cat = subgroup_cat)
 
-# # reset extended values to NA where median values exist (bar last median value)
+# reset extended values to NA where median values exist (bar last median value)
 
 gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
   group_by(dataset, hbtype, hbname, period, measure, measure_cat, subgroup_cat, median_name) %>%
@@ -573,6 +559,34 @@ gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
 gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
   janitor::clean_names() %>% 
   janitor::remove_empty(., which = c("cols"), quiet = TRUE) 
+
+# reset measure_value for babies born alive
+
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+  mutate(measure_value = if_else(measure_cat == '5', NA, measure_value)
+         )
+
+# set factor levels for measure_cat
+
+gestation_by_BAPM_LOC$measure_cat =
+  factor(gestation_by_BAPM_LOC$measure_cat, levels = c(0, 1, 2, 3, 4, 5),
+         labels = c("all admissions to a neonatal unit",
+                    "intensive care",
+                    "high dependency care",
+                    "special care",
+                    "normal care",
+                    "babies born alive"),
+         ordered = TRUE
+  )
+
+# set factor levels for subgroup_cat
+
+gestation_by_BAPM_LOC$subgroup_cat =
+  factor(gestation_by_BAPM_LOC$subgroup_cat, levels = c(1, 2),
+         labels = c("between 34 and 36 weeks (inclusive)", # late pre-term
+                    "between 37 and 42 weeks (inclusive)"), # term/post-term
+         ordered = TRUE
+  )
 
 saveRDS(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
 
@@ -609,13 +623,13 @@ gestation_by_BAPM_LOC <- left_join(gestation_by_BAPM_LOC,
 
 # add date_label and round values, order variables for download dataframe
 
-gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
   arrange(date) %>%
   mutate(date_label = qtr(ymd(date), format = "short"),
          date_label = factor(date_label, levels = unique(date_label), ordered = TRUE),
          across(c(measure_value, post_pandemic_median:extended_post_pandemic_median), ~ round(., 3))
   ) %>%
-  arrange(measure_cat, subgroup_cat, date) %>% 
+  arrange(date, subgroup_cat, measure_cat) %>% 
   ungroup()
 
 gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
@@ -623,6 +637,6 @@ gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
 
 saveRDS(gestation_by_BAPM_LOC, paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds"))
 
-write.csv(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.csv"), row.names = FALSE)
+# write.csv(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.csv"), row.names = FALSE)
 
 ## - END OF SCRIPT ----

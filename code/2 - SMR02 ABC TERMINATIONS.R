@@ -831,10 +831,10 @@ annual_dataframe <- filter(everything_dataframe,
   group_by(MIO_measure_ref, measure, period, hbtype, date) %>% 
   mutate(
     den = if_else(measure_cat == "average gestation", NA, den),
-    measure_cat = case_match(measure,
+    measure_cat = recode_values(measure,
                              "GESTATION AT BOOKING" ~ "average gestation at booking",
                              "GESTATION AT TERMINATION" ~ "average gestation at termination",
-                             .default = measure_cat
+                             default = measure_cat
     ),
     
     measure_value = round(measure_value, 2),

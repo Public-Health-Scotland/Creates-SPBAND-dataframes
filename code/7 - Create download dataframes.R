@@ -38,7 +38,7 @@ download_dataframe <- list_assign(download_dataframe,
                                   
                                   "MULTI INDICATOR OVERVIEW" = annual_dataframe,
                                   
-                                  # "ADMISSIONS TO NEOCARE BY LEVEL OF CARE" = readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")),
+                                  "ADMISSIONS TO NEOCARE BY LEVEL OF CARE" = readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds")),
                                   
                                   "CORRECTED GESTATION AT DISCHARGE" = readRDS(paste0(data_path, "/", "babies_30_32_weeks_discharged_from_neocare_download_dataframe.rds"))
                                   )
@@ -192,15 +192,14 @@ names(nice_download) <- janitor::make_clean_names(names(download_dataframe))
 
 # set rownum - this is the row number where the data table should start
 
-  rownum <- case_match(
+  rownum <- recode_values(
     names(nice_download),
     c("tears",
       "gestation_at_termination") ~ 8,
     "gestation_at_booking" ~ 8,
     "corrected_gestation_at_discharge" ~ 5,
     "admissions_to_neocare_by_level_of_care" ~ 8,
-    #"type_of_birth" ~ 9,
-    .default = 7
+    default = 7
   )
 
 # function to take each dataset and write it into the correct template
