@@ -371,3 +371,252 @@ add_split_gaps <- function(dataset, measure, split_col_prefix){
                     ~if_else((num_rows == 2) & (dup_row == 1), NA_real_, .x))
              )
 }
+
+# Function to calculate new episode numbers, number of episodes and last episode flag
+# Badgernet episode numbers are not always in the correct order
+# Assumes the dataset has been ordered by date time of admission then 
+# date time of discharge
+# Parameters:
+# dataset: the NeoCare dataframe
+
+add_episode_vars <- function(dataset) {
+  dataset <- dataset %>% 
+    group_by(baby_upi) %>% 
+    mutate(episode_number =  row_number(),
+           number_of_episodes = n(),
+           last_episode = episode_number == number_of_episodes
+    ) %>% 
+    ungroup()
+  
+  return(dataset)
+  
+}
+
+# Function to calculate delay between birth and admission to the first episode and the delay between episodes of care
+# Assumes the dataset has been ordered by date time of admission then 
+# date time of discharge
+# Parameters:
+# dataset: the NeoCare dataframe
+# episode_number: the field used to identify episode numbers
+
+add_delay_vars <- function(dataset, episode_number = episode_number) {
+  dataset <- dataset %>% 
+    group_by(baby_upi) %>% 
+    mutate(delay_between_birth_and_admission = if_else(episode_number == 1, 
+                                                       trunc(difftime(date_time_of_admission, baby_birth_date_time, units = 'hours')), NA),
+           delay_between_episodes = 
+             trunc(difftime(date_time_of_admission, lag(date_time_of_discharge, 1), units = 'days'))
+    ) %>% 
+    ungroup()
+  
+  return(dataset)
+
+}
+
+# Function to check for missing location codes in delivery, admitted from and treatment columns
+# Parameters:
+# dataset: the NeoCare dataframe
+
+check_location_codes <- function(dataset) {
+  
+  # determines column numbers of location fields in dataset
+  
+  location_code_vars <- 
+    grep("^location.*code$", names(dataset))[1:3] 
+  
+  print("location code variables exist in fields:")
+  
+  print(location_code_vars)
+  
+  # collects names of location fields
+  
+  location_code_vars <- names(dataset[location_code_vars])
+  
+  print(location_code_vars)
+  
+  # looks for missing values in the dataset
+  
+  missing_locations <- dataset %>%
+    filter(
+      is.na(.data[[location_code_vars[[1]]]]) |
+        is.na(.data[[location_code_vars[[2]]]]) |
+        is.na(.data[[location_code_vars[[3]]]])
+    ) %>% 
+    select(neocare_episode_unique_id, all_of( location_code_vars))
+  
+  print(paste0(nrow(missing_locations), " episodes have missing location codes, these will be replaced with D299N"))
+  
+  View(missing_locations)
+  
+  # replaces NA values with D299N
+  
+  dataset <- dataset %>% 
+    mutate(across(all_of(location_code_vars), ~replace(., is.na(.), "D299N"))
+    )
+
+  return(dataset)
+    
+}
+
+# Function to check that location of delivery is consistent
+# Parameters:
+# dataset: the NeoCare dataframe
+# number of episodes: the field that holds the total number of episodes in the spell
+# Assumes location of delivery code is present in the dataset
+
+check_location_of_delivery <- function(dataset) {
+  
+  inconsistent_locations <- filter(dataset, number_of_episodes > 1) %>%
+    group_by(baby_upi) %>%
+    reframe(same_location = baby_upi == lag(baby_upi) & location_of_delivery_code == lag(location_of_delivery_code)
+    ) %>%
+    filter(same_location == FALSE) %>%
+    distinct()
+  
+  print(paste0(nrow(inconsistent_locations), " babies have conflicting location_of_delivery"))
+  
+  View(inconsistent_locations)
+  
+  return(inconsistent_locations)
+  
+}
+
+# Function to fix inconsistent location of delivery (to the first non D299N value)
+# Parameters:
+# dataset: the NeoCare dataframe
+# Assumes location of delivery code is present in the dataset and the  inconsistent location table has been created
+
+fix_location_of_delivery <- function(dataset) {
+  
+  # select first location_of_delivery unless it is D299N
+  
+  data <-
+    left_join(dataset, inconsistent_locations) %>%
+    filter(same_location == FALSE) %>%
+    group_by(baby_upi) %>%
+    select(baby_upi, contains("location_of_delivery"))
+  
+  condition <- function(x) x !="D299N"
+  
+  # Apply the condition within each group and find the first value that meets the condition
+  
+  data <- data %>%
+    group_by(baby_upi) %>%
+    filter(condition(location_of_delivery_code)) %>%
+    slice(1)
+  
+  # create new fields containing the "first" location_of_delivery
+  
+  names(data)[2:4] <- paste0(names(data)[2:4], "_new")
+  
+  # update location_of_delivery in the main dataset
+  
+  dataset <-
+    left_join(dataset, data) %>%
+    mutate(location_of_delivery_matneo_key =
+             if_else(!is.na(location_of_delivery_matneo_key_new),
+                     location_of_delivery_matneo_key_new,
+                     location_of_delivery_matneo_key),
+           location_of_delivery_code =
+             if_else(!is.na(location_of_delivery_code_new),
+                     location_of_delivery_code_new,
+                     location_of_delivery_code),
+           location_of_delivery_name =
+             if_else(!is.na(location_of_delivery_name_new),
+                     location_of_delivery_name_new,
+                     location_of_delivery_name),
+           
+    ) %>%
+    select(- contains("_new"))
+  
+  return(dataset)
+  
+}
+
+# Function to identify babies born in Scotland, admitted from a location in Scotland and discharged to a location in Scotland
+# Parameters:
+# dataset: the NeoCare dataframe
+# Assumes location of delivery code, location admitted from and location discharged to are all present in the dataset
+# uses location_mapping to match on scottish_health_board_curr
+
+identify_scottish_babies <- function(dataset) {
+  
+  select_non_scottish_locations <- function(dataset, location_field, description) {
+    
+    data <- dataset %>% 
+      filter(substr({{location_field}}, 1, 1) == "E" |
+               {{location_field}} == "D299N") %>% 
+      select(baby_upi) %>% 
+      distinct()
+    
+    print(paste0(nrow(data), " babies were ", {{description}}, " Scotland and these will be removed from the dataset"))
+    
+    return(data)
+    
+  }
+  
+  # join_on_location <- function(dataset, location_field, description) {
+  #   
+  #   data <- left_join(dataset, 
+  #                     select(location_mapping, location_code, scottish_health_board_curr),
+  #                     by = join_by({{location_field}} == location_code)) %>% 
+  #     mutate(scottish_health_board_curr =
+  #              if_else({{location_field}} == 'D201N', 'Y', scottish_health_board_curr)) %>% 
+  #     filter(scottish_health_board_curr == 'N') %>% 
+  #     select(baby_upi) %>% 
+  #     distinct()
+  #   
+  #   print(paste0(nrow(data), " babies were ", {{description}}, " Scotland and these will be removed from the dataset"))
+  #   
+  #   return(data)
+  #   
+  # }
+  
+  # identify babies born outwith Scotland
+  
+  babies_born_outwith_scotland <- select_non_scottish_locations(dataset, location_of_delivery_code, "born outwith")
+  
+  View(babies_born_outwith_scotland)
+  
+  # identify babies admitted from outwith Scotland (inc. D299N)
+  
+  admitted_from_outwith_Scotland <- select_non_scottish_locations(dataset, location_admitted_from_code, "admitted from") 
+  
+  View(admitted_from_outwith_Scotland)
+  
+  # identify babies discharged outwith Scotland (inc. D299N)
+  
+  discharged_outwith_Scotland <- select_non_scottish_locations(dataset, location_discharged_to_code, "discharged to a location outwith") 
+  
+  View(discharged_outwith_Scotland)
+  
+  remove_babies <- bind_rows(babies_born_outwith_scotland, admitted_from_outwith_Scotland, discharged_outwith_Scotland)
+  
+  # remove identified babies from cohort
+  
+  dataset <-
+    anti_join(dataset, remove_babies)
+  
+  return(dataset)
+  
+}
+
+# Function to identify the first episode number where a baby was sent HOME or to FOSTER CARE
+# Parameters:
+# dataset: the NeoCare dataframe
+# Assumes discharged_home is present in the dataset
+
+identify_babies_sent_home_foster_care <- function(dataset) {
+  
+  data <- select(completed_episodes_loc, baby_upi, discharged_home) %>% 
+    filter(!is.na(discharged_home)) %>% 
+    group_by(baby_upi) %>% 
+    mutate(first_discharged_home = min(discharged_home)
+    ) %>% 
+    select(baby_upi, first_discharged_home) %>% 
+    distinct()
+  
+  return(data)
+  
+}
+

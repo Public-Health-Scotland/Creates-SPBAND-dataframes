@@ -230,10 +230,10 @@ fixed_median_runchart_dataframe1 <- fixed_median_runchart_dataframe1 %>%
 # need to add suffix in as this is missing
 
 fixed_median_runchart_dataframe1 <- fixed_median_runchart_dataframe1 %>% 
-  mutate(suffix = case_match(measure,
+  mutate(suffix = recode_values(measure,
      c("BOOKINGS", "TERMINATIONS") ~ "",
      c("GESTATION AT BOOKING", "GESTATION AT TERMINATION") ~ " weeks",
-     .default = "%")
+     default = "%")
      )
 
 ### iii - Tidy up ----

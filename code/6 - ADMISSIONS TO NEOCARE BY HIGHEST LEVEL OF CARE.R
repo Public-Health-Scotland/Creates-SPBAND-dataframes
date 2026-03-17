@@ -1,16 +1,17 @@
 ###
-# Late pre-term and term/post-term admissions to a neonatal unit by highest level of care 
+# Late pre-term and term/post-term admissions to a specialist neonatal unit by highest level of care 
 # Want to reduce the avoidable separation of mother and baby
-# Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND
+# Scottish Pregnancy, Births and Neonatal Data dashboard (SPBAND)
 # Sourced from the Maternity Team's SMR02 data file and the NeoCareIn+ datamart
 # Bev Dodds
 # 10 October 2024
-# Last update by Bev Dodds
-# Latest update description: tidied up code
+# Last updated by Bev Dodds
+# Last updated 18 February 2026
+# Latest update description: revised code to use real NeoCare data
 # Type of script - preparation, visualisation, data extraction for dashboards
 # Written/run on Posit Workbench
 # Version of R - 4.4.2
-# Reads in SMR02 live births and mocks up locations of care until NeoCareIn+ data becomes available
+# Reads in SMR02 live births for the denominator and NeoCareIn+ data for the numerator
 # Approximate run time - <5 minutes
 ###
 
@@ -20,16 +21,32 @@
 
 source("code/1 - Housekeeping code to be updated each refresh.R")
 
-### 2 - Initialise variables ----
+# Read in additional package libraries (every time) ----
 
-BAPM_LOC_runchart_categories <- c("intensive care", "high dependency care", "special care", "normal care")
+library(DBI)
+library(odbc)
 
-BAPM_LOC_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late pre-term
-                                  "between 37 and 42 weeks (inclusive)") # term/post-term
+# Open a connection to DVPROD (production environment) ----
+
+denodo_connect <- suppressWarnings(
+  dbConnect(
+    odbc(),
+    dsn = "DVPROD",
+     uid = Sys.getenv("USER"),
+    pwd = .rs.askForPassword("Enter your LDAP password"),
+    bigint = "integer")
+)
+
+### 2 - Initialise grouping variables ----
+
+bapm_level_of_care_runchart_categories <- c("intensive care", "high dependency care", "special care", "normal care")
+
+bapm_level_of_care_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late pre-term
+                                            "between 37 and 42 weeks (inclusive)") # term/post-term
 
 ### 3 - Read in source data ----
 
-### 3a - real numerator will come from NeoCare+ ----
+### 3a - numerators come from NeoCareIn+ ----
 
 # The numerator contains a subset of the number of live born babies admitted to a neonatal unit (first admission only). These babies are categorised by their gestation at birth:
 
@@ -42,7 +59,7 @@ BAPM_LOC_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late 
 # Special care
 # Normal care (could be Special care + parent present)
 
-# will need to select first admission (CHI/Baby ID and date of admission)
+# will need to select first admission (baby UPI and date of admission)
 # where baby was born in Scotland at 34-36 weeks and 37-42 weeks gestation (gestation in weeks)
 
 # Variables required from NeoCareIn+
@@ -60,13 +77,15 @@ BAPM_LOC_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late 
 # Highest level of care (BAPM spec) - use BAPM (2011) level of care - want only the highest value 1 - INTENSIVE CARE, 2 - HIGH DEPENDENCY CARE, 3 - SPECIAL CARE, 4 - NORMAL CARE = bapm2011_level_of_care [char] - will need to check over all days in episode
 
 # Exclusions
+# Babies born before 1 Jan 2018
 # Babies born outwith Scotland
 # Babies admitted from home (if they have already been discharged home) i.e. admitted more than 24 hours after birth
 # Definitely don't want Ward Location = highest_level_of_care [char] 3, 8; if baby spends all days in > 1 (Neonatal unit) exclude
 # Babies with a missing gestation at birth
 # Babies with a missing BAPM2011 level of care (even one?)
 # Babies with a missing discharge date
-# Any subsequent episodes of care 
+# Any subsequent episodes of care after discharge home/foster care
+# These may be identified by admission from D201N if not already identified by a discharge home/to foster care
 
 # Investigate how many babies are in Ward Location = 2 their entire stay
 # Investigate whether Ward Location (highest_level_of_aare) correlates with bapm2011_level_of_care
@@ -77,65 +96,314 @@ BAPM_LOC_subgroup_categories <- c("between 34 and 36 weeks (inclusive)", # late 
 
 # perform counts on this data (section 5)
 
+# identify babies born at 34-36 and 37-42 weeks inclusive with a discharge_date and a valid baby_upi ----
 
-### Code to access tables in Denodo environment ###
+initial_cohort_of_completed_episodes_loc <- as_tibble(dbGetQuery(denodo_connect,
+  "SELECT entity_id, neocare_episode_unique_id, episode_number AS bn_episode_number, baby_upi, baby_birth_date_time, gestation_at_delivery_weeks, gestation_at_delivery_days, date_time_of_admission, date_time_of_discharge, location_of_delivery_matneo_key, location_of_delivery_code, location_of_delivery_name, admission_source_code, admission_source_desc, location_admitted_from_matneo_key, location_admitted_from_code, location_admitted_from_name, location_of_treatment_matneo_key, location_of_treatment_code, location_of_treatment_name, discharge_destination_code, discharge_destination_desc, location_discharged_to_matneo_key, location_discharged_to_code, location_discharged_to_name, discharge_destination_wardtype_code, discharge_destination_wardtype_desc
+  
+    FROM matneo.matneo_neocare_episode a
+      LEFT OUTER JOIN matneo.matneo_deletions b
+        ON a.entity_id = b.unique_identifier
+          WHERE baby_birth_date >= '2018-01-01' AND date_of_discharge IS NOT NULL AND baby_upi IS NOT NULL AND (gestation_at_delivery_weeks BETWEEN '34' AND '36' OR gestation_at_delivery_weeks BETWEEN '37' AND '42')  AND dataset IS NULL
+            ORDER BY baby_upi, date_time_of_admission, date_time_of_discharge
+                       "))
 
-# Install packages (run one-time if not already installed)
+nrow(initial_cohort_of_completed_episodes_loc)
+length(unique(initial_cohort_of_completed_episodes_loc$baby_upi))
 
-# install.packages("DBI")
-# install.packages("odbc")
-# install.packages("dplyr")
+# add (new) episode_number, number_of_episodes, last episode flag 
 
-# Read in the package libraries (every time) ----
+initial_cohort_of_completed_episodes_loc <- 
+  add_episode_vars(initial_cohort_of_completed_episodes_loc)
 
-library(DBI)
-library(odbc)
-library(dplyr)
+table(initial_cohort_of_completed_episodes_loc$episode_number)
 
-# Open a connection to DVPREPROD (test environment) or DVPROD (production environment) ----
-denodo_connect <- suppressWarnings(
-  dbConnect(
-    odbc(),
-    dsn = "DVPREPROD",
-    uid = "beverd01",
-    pwd = .rs.askForPassword("Enter your LDAP password"))
-)
+# calculate delay between birth and admission to the first episode and the delay between episodes of care
 
-df <- as_tibble(
-  dbGetQuery(denodo_connect,
-             "SELECT * from matneo.matneo_neocare_episode a
-             LEFT JOIN matneo.matneo_extract_log b
-             ON a.seer_source_extract_id = b.seer_source_extract_id
-             LIMIT 100")) 
+initial_cohort_of_completed_episodes_loc <- 
+  add_delay_vars(initial_cohort_of_completed_episodes_loc)
 
-# Complete Episodes 
+print(range(initial_cohort_of_completed_episodes_loc$delay_between_birth_and_admission, na.rm = TRUE))
 
-# Get only complete episodes from matneo_neocare_episode. 
+print(range(initial_cohort_of_completed_episodes_loc$delay_between_episodes, na.rm = TRUE))
 
-# "SELECT * FROM matneo.matneo_neocare_episode WHERE date_of_discharge IS NOT NULL LIMIT 100" 
+# reorder variables and drop bn_episode_number (prefer derived episode_number)
 
-# Get only day data that is part of a complete episode. 
+initial_cohort_of_completed_episodes_loc <- 
+  initial_cohort_of_completed_episodes_loc %>% 
+  select(neocare_episode_unique_id, episode_number, number_of_episodes, last_episode, baby_upi, baby_birth_date_time, delay_between_birth_and_admission, delay_between_episodes, date_time_of_admission, date_time_of_discharge, gestation_at_delivery_weeks, gestation_at_delivery_days, location_of_delivery_matneo_key, location_of_delivery_code, location_of_delivery_name, admission_source_code, admission_source_desc, location_admitted_from_matneo_key, location_admitted_from_code, location_admitted_from_name,  location_of_treatment_matneo_key, location_of_treatment_code, location_of_treatment_name, discharge_destination_code, discharge_destination_desc, location_discharged_to_matneo_key, location_discharged_to_code, location_discharged_to_name, discharge_destination_wardtype_code, 
+         discharge_destination_wardtype_desc
+  )
 
-# "SELECT * FROM matneo.matneo_neocare_day a INNER JOIN matneo.matneo_neocare_episode b ON a.neocare_episode_unique_id = b.neocare_episode_unique_id WHERE b.date_of_discharge IS NOT NULL LIMIT 100" #
+saveRDS(initial_cohort_of_completed_episodes_loc, paste0(data_path, "/", "initial_cohort_of_completed_episodes_loc.rds"))
 
-# Transform data from ‘Long’ to ‘Wide’ in POSIT 
+# make a copy of the initial cohort ----
 
-# Assuming the query about is stored in a dataframe named ‘df’.  
+initial_cohort_of_completed_episodes_loc <- readRDS(paste0(data_path, "/", "initial_cohort_of_completed_episodes_loc.rds"))
 
-# df %>% mutate(val = 1) %>%  
-# 
-#   pivot_wider(, id_cols = c(entity_id, mother_upi, baby_upi), names_from = reference_data_description, values_from = val ) 
+completed_episodes_loc <- initial_cohort_of_completed_episodes_loc
 
-# Read in data from matneo_location (reference file) ----
+# check for missing location codes in delivery, admitted from and treatment columns ----
 
-locations <- as_tibble(
-  dbGetQuery(denodo_connect,
-             "SELECT * 
-             FROM matneo.matneo_location")
-  ) %>%
-  # only need records missing a national location code; do not need the system-generated "blank" record (all NAs)
-  filter(!is.na(data_provider) & is.na(national_location_code)) %>% 
-  select(- location_key) # don't need this column
+completed_episodes_loc <- check_location_codes(completed_episodes_loc)
+
+# check location_of_delivery is consistent ----
+
+inconsistent_locations <- check_location_of_delivery(completed_episodes_loc)
+
+# set inconsistent location_of_delivery to the first values (if not D299N)
+
+completed_episodes_loc <- fix_location_of_delivery(completed_episodes_loc)
+
+# recheck location_of_delivery is consistent ----
+
+inconsistent_locations <- check_location_of_delivery(completed_episodes_loc)
+
+# tidy up
+
+rm(inconsistent_locations)
+
+saveRDS(completed_episodes_loc, paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+# identify babies born in, admitted from a location in and discharged to a location in Scotland ---- 
+# remove them from the cohort
+
+completed_episodes_loc <- readRDS(paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+completed_episodes_loc <- identify_scottish_babies(completed_episodes_loc)
+
+nrow(completed_episodes_loc)
+length(unique(completed_episodes_loc$baby_upi))
+
+table(completed_episodes_loc$episode_number)
+
+saveRDS(completed_episodes_loc, paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+# flag episodes admitted from home or discharged to home/foster care ----
+
+completed_episodes_loc <- readRDS(paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+completed_episodes_loc <-  completed_episodes_loc %>% 
+  mutate(admitted_from_home = if_else(location_admitted_from_code == "D201N", episode_number, NA),
+         discharged_home = if_else(discharge_destination_code %in% c(1, 4), episode_number, NA)
+  )
+
+table(completed_episodes_loc$admitted_from_home)
+table(completed_episodes_loc$discharged_home)
+
+# exclude babies admitted from home [to their first episode of care] more than 24 hours after birth ----
+
+babies_admitted_from_home_over_24_hours_after_birth <- 
+  filter(completed_episodes_loc, 
+         admitted_from_home == 1 & delay_between_birth_and_admission > 24) %>% 
+  select(baby_upi) %>% 
+  distinct()
+
+# remove these babies from the cohort
+
+completed_episodes_loc <- 
+  anti_join(completed_episodes_loc, babies_admitted_from_home_over_24_hours_after_birth)
+
+nrow(completed_episodes_loc)
+length(unique(completed_episodes_loc$baby_upi))
+
+table(completed_episodes_loc$episode_number)
+
+table(completed_episodes_loc$admitted_from_home)
+
+table(completed_episodes_loc$discharged_home)
+
+saveRDS(completed_episodes_loc, paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+rm(babies_admitted_from_home_over_24_hours_after_birth)
+
+# identify first episode number where a baby was sent HOME or to FOSTER CARE ----
+
+completed_episodes_loc <- readRDS(paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+babies_sent_home_foster_care <- identify_babies_sent_home_foster_care(completed_episodes_loc)
+
+# if a baby has been discharged to home or foster care then subsequent episodes should be removed as the end of the first spell of care has been identified
+
+completed_episodes_loc <- 
+  left_join(completed_episodes_loc, babies_sent_home_foster_care) %>% 
+  filter(is.na(first_discharged_home) | episode_number <= first_discharged_home)
+
+nrow(completed_episodes_loc)
+length(unique(completed_episodes_loc$baby_upi))
+
+table(completed_episodes_loc$episode_number)
+
+table(completed_episodes_loc$admitted_from_home)
+
+table(completed_episodes_loc$discharged_home)
+
+saveRDS(completed_episodes_loc, paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+rm(babies_sent_home_foster_care)
+
+# remove subsequent episodes where a baby was admitted from HOME (D201N) ----
+# if a baby has been admitted from home in the second (or higher) episode, these episodes (and subsequent episodes) should be removed as the baby has left specialist neonatal care for a period of time (possibly via POSTNATAL WARD or PICU)
+# a few babies were admitted from home in the first and subsequent episodes so the later episodes need to be removed, hence the check for the same baby
+
+completed_episodes_loc <- readRDS(paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+babies_admitted_from_home_subsequent_episode <- 
+  select(completed_episodes_loc, c(baby_upi, admitted_from_home)) %>% 
+  filter(!is.na(admitted_from_home)) %>% 
+  group_by(baby_upi) %>% 
+  mutate(same_baby = baby_upi == lag(baby_upi),
+         first_admitted_from_home = min(admitted_from_home)
+         ) %>%
+  select(baby_upi, same_baby, first_admitted_from_home) %>% 
+  distinct() 
+
+table(babies_admitted_from_home_subsequent_episode$first_admitted_from_home)
+
+babies_admitted_from_home_subsequent_episode <- 
+  babies_admitted_from_home_subsequent_episode %>% 
+  filter(same_baby == TRUE | first_admitted_from_home > 1) # first episodes will always be kept
+
+table(babies_admitted_from_home_subsequent_episode$first_admitted_from_home)
+
+# remove the subsequent episodes from the cohort
+# keep all records where the baby wasn't admitted from home in any episode
+# keep all first episodes regardless of where they were admitted from
+# keep all episodes before the episode where the baby was admitted from home
+# i.e. where episode_number < first_admitted_from_home
+
+completed_episodes_loc <- 
+  left_join(completed_episodes_loc, babies_admitted_from_home_subsequent_episode) %>% 
+  filter(is.na(first_admitted_from_home) | episode_number == 1 | episode_number < first_admitted_from_home)
+
+nrow(completed_episodes_loc)
+length(unique(completed_episodes_loc$baby_upi))
+
+table(completed_episodes_loc$episode_number)
+
+table(completed_episodes_loc$admitted_from_home)
+
+table(completed_episodes_loc$discharged_home)
+
+# recalculate number_of_episodes and last_episode
+
+completed_episodes_loc <- add_episode_vars(completed_episodes_loc)
+
+table(completed_episodes_loc$number_of_episodes)
+
+completed_episodes_loc <- completed_episodes_loc %>% 
+  select(- same_baby)
+
+saveRDS(completed_episodes_loc, paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+rm(babies_admitted_from_home_subsequent_episode)
+
+# looking at discharge_destination_ward_type for babies with single episodes and multiple episodes ----
+
+completed_episodes_loc <- readRDS(paste0(data_path, "/", "completed_episodes_loc.rds"))
+
+# read in the day records ----
+
+daily_data <- as_tibble(dbGetQuery(denodo_connect,
+                                   "SELECT baby_upi, neocare_episode_unique_id, neocare_day_unique_id, date_of_care, bapm2011_level_of_care_code, bapm2011_level_of_care_desc, highest_level_of_care_code, highest_level_of_care_desc
+  FROM matneo.matneo_neocare_day
+    ORDER BY baby_upi, neocare_episode_unique_id, date_of_care"
+))
+
+# looking at highest_level_of_care (aka Ward Location)
+# 1	NEONATAL UNIT, 2 TRANSITIONAL CARE, 3	POSTNATAL WARD, 8	OTHER OBSTETRIC AREA
+
+# and bapm2011_level_of_care_code
+# 1	INTENSIVE CARE, 2	HIGH DEPENDENCY CARE, 3	SPECIAL CARE, 4	NORMAL CARE
+
+# match on the BAPM level of care and highest level of care fields ----
+# to main dataset using baby_upi and neocare_episode_unique_id
+
+completed_episodes_loc_with_daily_data <- left_join(completed_episodes_loc, daily_data) 
+length(unique(completed_episodes_loc_with_daily_data$neocare_episode_unique_id))
+length(unique(completed_episodes_loc_with_daily_data$baby_upi))
+
+saveRDS(completed_episodes_loc_with_daily_data, paste0(data_path, "/", "completed_episodes_loc_with_daily_data"))
+
+# group by baby_upi to determine minimum highest level of care codes ----
+# remove babies with a missing minimum bapm2011_level_of_care_code
+
+completed_episodes_loc_with_daily_data <- readRDS(paste0(data_path, "/", "completed_episodes_loc_with_daily_data"))
+
+highest_level_of_care <- completed_episodes_loc_with_daily_data %>%
+  group_by(baby_upi) %>%
+  summarise(min_highest_level_of_care_code = min(highest_level_of_care_code, na.rm = TRUE),
+            min_bapm2011_level_of_care_code = min(bapm2011_level_of_care_code, na.rm = TRUE),
+            days_in_care = n()
+  ) %>% 
+  filter(!is.na(min_bapm2011_level_of_care_code))
+
+# match min highest levels of care onto main cohort ----
+
+completed_episodes_loc_with_daily_data <-
+  left_join(completed_episodes_loc_with_daily_data, highest_level_of_care)
+
+summary_highest_level_of_care <- completed_episodes_loc_with_daily_data %>% 
+  select(baby_upi, number_of_episodes, min_highest_level_of_care_code, min_bapm2011_level_of_care_code) %>% 
+  distinct() %>% 
+  group_by(min_bapm2011_level_of_care_code, min_highest_level_of_care_code) %>% 
+  summarise(count = n())
+
+# remove the babies with missing bapm2011_level_of_care
+
+completed_episodes_loc_with_daily_data <- 
+  completed_episodes_loc_with_daily_data %>% 
+  filter(!is.na(min_bapm2011_level_of_care_code))
+
+length(unique(completed_episodes_loc_with_daily_data$neocare_episode_unique_id))
+length(unique(completed_episodes_loc_with_daily_data$baby_upi))
+
+# remove babies who ONLY spent time in TC or lower levels of care (2, 3, 8) ----
+
+completed_episodes_loc_with_daily_data <- completed_episodes_loc_with_daily_data %>% 
+  filter(min_highest_level_of_care_code == 1)
+
+length(unique(completed_episodes_loc_with_daily_data$neocare_episode_unique_id))
+length(unique(completed_episodes_loc_with_daily_data$baby_upi))
+
+# reduce file down to babies for use in SPBAND ----
+
+BAPM_babies <- completed_episodes_loc_with_daily_data %>% 
+  group_by(baby_upi) %>%
+  slice(1) %>% 
+  ungroup() %>% 
+  select(baby_birth_date_time, gestation_at_delivery_weeks,min_bapm2011_level_of_care_code) 
+
+# add gestation groups ----
+
+BAPM_babies <- BAPM_babies %>% 
+  mutate(gest_grp = case_when(
+    between(gestation_at_delivery_weeks, 34, 36) ~ 1,
+    between(gestation_at_delivery_weeks, 37, 42) ~ 2),
+    quarter_of_birth = as.Date(as.yearqtr(baby_birth_date_time)), # quarter beginning
+    dataset = "NeoCareIn+"
+  )
+
+# aggregate BAPM_babies by quarter, gest_grp and BAPM_level_of_care
+
+admissions_to_neocare <- summarise(BAPM_babies,
+                                   .by = c(dataset, quarter_of_birth, gest_grp, min_bapm2011_level_of_care_code),
+                                   bapm_count = n())
+
+# aggregate BAPM_babies by quarter and gest_grp to get total numbers admitted to neonatal care
+
+all_admissions_to_neocare <- BAPM_babies %>%
+  mutate(min_bapm2011_level_of_care_code = '0') %>% 
+  summarise(.,
+            .by = c(dataset, quarter_of_birth, gest_grp, min_bapm2011_level_of_care_code),
+            bapm_count = n())
+  
+# add the two files together - these are the numerators
+
+admissions_to_neocare <- bind_rows(all_admissions_to_neocare, admissions_to_neocare) %>% 
+  arrange(quarter_of_birth, gest_grp, min_bapm2011_level_of_care_code)
+
+saveRDS(admissions_to_neocare, paste0(data_path, "/", "admissions_to_neocare.rds"))
 
 ### 3b - real denominator will come from SMR02 ----
 
@@ -156,304 +424,179 @@ locations <- as_tibble(
 # calculate measure_value (section 5)
 # create runcharts etc (section 6)
 
-### Made up data ----
-
 ### 3c - SMR02 from .rds version ----
 # to create charts for dashboard
 
 # condis = 3 (delivered)
 # outcome1 = 1 (livebirth) 
 
-babies_raw <- 
+SMR02_babies <- 
   readRDS(SMR02_filename) %>% 
-  filter(year >= 2018 & condis == 3 & outcome1 == 1) %>%   # maternity record live births
-  mutate(dataset = "NeoCareIn+",
-         hbtype = "Treatment",
-         hbname = "Scotland",
-         date_of_delivery = as.Date(date_of_delivery),
-         quarter_of_delivery = as.Date(as.yearqtr(date_of_delivery)), # quarter beginning
-         fin_year = extract_fin_year(date_of_delivery),
-         calendar_year = format(ymd(date_of_delivery), "%Y"),
-         period = "Q",
-         estgest = na_if(estgest, 99),
-  ) %>%  
-  filter(date_of_delivery >= "2018-01-01" & quarter_of_delivery <= cut_off_date_Qtrly) %>% # don't publish incomplete data
-  select(dataset, hbtype, hbname, fin_year, calendar_year, date_of_delivery, quarter_of_delivery, period, upi, numbir,
-         outcome = outcome1, outcome_name = outcome1name, gestation_weeks = estgest)
+  filter(date_of_delivery >= "2018-01-01" & condis == 3 & outcome1 == 1 & between(estgest, 34, 42)) %>%   # maternity record live births
+  mutate(dataset = "SMR02",  
+         date_of_birth = as.Date(date_of_delivery),
+         quarter_of_birth = as.Date(as.yearqtr(date_of_birth)) # quarter beginning
+) %>% 
+  select(dataset, date_of_birth, quarter_of_birth, gestation_weeks = estgest)
 
-### 4 - Create new variables ----
+# add gestation groups ----
 
-# no median for now - not enough quarters from Jul 2022 for post-pandemic median yet
-
-# babies_raw <- babies_raw %>%  
-#   mutate(
-#     # median_name = case_when(
-#     #   quarter <= "2019-10-01" ~ "pre-pandemic median",
-#     #   #between(quarter, as.Date("2022-07-01"), as.Date("2024-06-01")) ~ "post-pandemic median",
-#     #   .default = NA
-#     # ),
-#     date = quarter,
-#     babies = 1
-#   ) %>% 
-#   janitor::remove_empty("cols") %>% 
-#   select (- quarter)
-
-# flag pertinent gestation periods (estgest has already been recoded
-# (18 thru 44 = copy)(else = 99))
-
-babies_raw <- babies_raw %>% 
+SMR02_babies <- SMR02_babies %>% 
   mutate(gest_grp = case_when(
     between(gestation_weeks, 34, 36) ~ 1,
     between(gestation_weeks, 37, 42) ~ 2,
     .default = 3
-  ),
-  babies = 1)
-
-# summarises the count and percentage of these gestation groups compared with all babies
-
-summary <- summarise(babies_raw,
-                     .by = gest_grp,
-                     babies = sum(babies)
-                     ) %>% 
-  arrange(gest_grp) %>% 
-  janitor::adorn_totals("row", fill = "")
-
-summary <- left_join(summary, summary %>% 
-  janitor::adorn_percentages("col") %>% 
-  janitor::adorn_pct_formatting(affix_sign = FALSE) %>% 
-    mutate(percent = as.double(babies)) %>% 
-    select(- babies),
-  by = "gest_grp"
-)
-
-babies_raw <- filter(babies_raw, gest_grp != 3)
-                   
-babies_raw$gest_grp <- 
-  factor(babies_raw$gest_grp, levels = c(1, 2),
-         labels = c("between 34 and 36 weeks (inclusive)", # late pre-term
-                    "between 37 and 42 weeks (inclusive)") # term and post-term
+  )
   )
 
-# generate a random BAPM level (1-4) to add to the dataset to create a subset (fake NeoCare dataset)
-
-set.seed(7)
-ss <- sample(1:5, 
-             size = nrow(babies_raw),
-             replace = TRUE,
-             prob = c(0.022, 0.023, 0.052, 0.050, 0.853)) # using overall percentages from Births in Scotland for the totals for 2018/19 - 2023/24 - sums to 1 to make proportions right
-
-ic <- babies_raw[ss == 1,] %>% mutate(BAPM_level_of_care = 1)
-hdu <- babies_raw[ss == 2,] %>% mutate(BAPM_level_of_care = 2)
-sc <- babies_raw[ss == 3,] %>% mutate(BAPM_level_of_care = 3)
-nc <- babies_raw[ss ==4,] %>% mutate(BAPM_level_of_care = 4)
-others <- babies_raw[ss == 5,] %>% mutate(BAPM_level_of_care = 9)
-
-BAPM_babies <- bind_rows(ic, hdu, sc, nc) # roughly 15% - no weighting for gestation
-
-# generate a random number of days (0-7) to add to the date_of_delivery -> date of admission to neonatal care
-
-# count_rows <- nrow(BAPM_babies)
-# 
-# set.seed(1)
-# 
-# BAPM_babies <- BAPM_babies %>% 
-#   mutate(admission_delay_days = round(runif(n = count_rows, min = 0, max = 7), 0),
-#          admission_date = date_of_delivery + admission_delay_days) %>% 
-#   arrange(admission_date) %>% 
-#   mutate(quarter_of_admission = as.Date(as.yearqtr(admission_date)),
-#          quarter_of_admission_label = qtr(ymd(admission_date), format = "short"),
-#          quarter_of_admission_label = factor(quarter_of_admission_label,
-#                                           levels = unique(quarter_of_admission_label),
-#                                           ordered = TRUE)
-#          )
-
-# BAPM_babies <- BAPM_babies %>% 
-#   filter(quarter_of_admission <= cut_off_date_Qtrly) # don't publish incomplete data
-  
-# aggregate BAPM_babies by quarter, gest_grp and BAPM_level_of_care
-
-admissions_to_neocare <- summarise(BAPM_babies,
-                                   .by = c(dataset, hbtype, hbname, quarter_of_delivery, period, gest_grp, BAPM_level_of_care),
-                                   count = n())
-
-# aggregate BAPM_babies by quarter and gest_grp to get total numbers admitted to neonatal care
-
-all_admissions_to_neocare <- BAPM_babies %>%
-  mutate(BAPM_level_of_care = 0) %>% 
-  summarise(.,
-            .by = c(dataset, hbtype, hbname, quarter_of_delivery, period, gest_grp, BAPM_level_of_care),
-            count = n())
-  
-# add the two files together - these are the numerators
-
-admissions_to_neocare <- bind_rows(all_admissions_to_neocare, admissions_to_neocare) %>% 
-  arrange(quarter_of_delivery, gest_grp, BAPM_level_of_care)
+saveRDS(SMR02_babies, paste0(data_path, "/", "SMR02_babies.rds"))
 
 # aggregate babies_raw by quarter and gest_grp to get denominators
 
-live_babies <- summarise(babies_raw,
-                        .by = c(dataset, hbtype, hbname, quarter_of_delivery, period, gest_grp),
-                        babies = n())
-
-# rename quarter_of_delivery to quarter_of_admission to enable matching
-# 
-# live_babies <- live_babies %>% 
-#   mutate(quarter_of_admission = quarter_of_delivery,
-#          quarter_of_delivery = NULL)
+live_babies <- summarise(SMR02_babies,
+                        .by = c(dataset, quarter_of_birth, gest_grp),
+                        live_babies = n())
 
 # append live_babies in same quarter to calculate percentages
 
-gestation_by_BAPM_LOC <- left_join(admissions_to_neocare, live_babies)
+admissions_to_neocare <- readRDS(paste0(data_path, "/", "admissions_to_neocare.rds"))
 
-# now add counts of live babies to BAPM_level_of_care for plotly charts in dashboard
+admissions_to_neocare <- left_join(admissions_to_neocare, select(live_babies, - dataset)
+)
 
-live_babies <- live_babies %>% 
-  mutate(BAPM_level_of_care = 4) %>% 
-  rename(count = babies)
+# now add total counts of live babies to min_bapm2011_level_of_care_code = 5 for plotly charts in dashboard
 
-# rename variables to standard names for download and dashboard code
+live_babies <- live_babies %>%
+  mutate(min_bapm2011_level_of_care_code = '5',
+         dataset = "SMR02"
+  ) %>% 
+  rename(bapm_count = live_babies) %>% 
+  distinct()
+
+# append total live births
+# remove incomplete data
+# add new and rename existing variables to standard names for download and dashboard code
 
 gestation_by_BAPM_LOC <- 
-  bind_rows(gestation_by_BAPM_LOC, live_babies) %>% 
-  rename(date = quarter_of_delivery,
+  bind_rows(admissions_to_neocare, live_babies) %>% 
+  filter(quarter_of_birth <= cut_off_date_Qtrly) %>% # don't publish incomplete data
+  rename(date = quarter_of_birth,
          subgroup_cat = gest_grp,
-         den = babies,
-         measure_cat = BAPM_level_of_care,
-         num = count) %>% 
-  mutate(measure_value = round(percentage(num, den), 3),
+         den = live_babies,
+         measure_cat = min_bapm2011_level_of_care_code,
+         num = bapm_count) %>% 
+  mutate(hbtype = "Treatment",
+         hbname = "Scotland",
+         period = "Q",
+         measure_value = round(percentage(num, den), 3),
          suffix = "%",
          measure = "ADMISSIONS TO NEOCARE BY LEVEL OF CARE"
   ) %>% 
+  arrange(date) %>%
+  select(dataset, measure, hbtype, hbname, period, date, subgroup_cat, measure_cat, num, den, measure_value, suffix) %>% 
   arrange(date, subgroup_cat, measure_cat)
 
-# set factor levels for measure_cat
+# move babies born alive to denominator and measure_value (temporarily, to allow mwdian to be calculated)
 
-gestation_by_BAPM_LOC$measure_cat =
-  factor(gestation_by_BAPM_LOC$measure_cat, levels = c(0, 1, 2, 3, 4),
-         labels = c("all admissions to a neonatal unit",
-                    "intensive care",
-                    "high dependency care",
-                    "special care",
-                    "babies born alive"),
-         ordered = TRUE
-  )
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
+  mutate(den = if_else(measure_cat == '5', num, den),
+         num = if_else(measure_cat == '5', NA, num),
+         measure_value = if_else(measure_cat == '5', den, measure_value)
+         )
 
-# set median_name as a factor to keep order
+# add post-pandemic median date range
 
-# gestation_by_BAPM_LOC$median_name <- factor(gestation_by_BAPM_LOC$median_name,
-#                                             levels = c("pre-pandemic median", "post-pandemic median"),
-#                                             labels = c("pre-pandemic median", # to Oct-Dec 2019 / to end Feb 2020
-#                                                        "post-pandemic median") # from Jul 2022 to end Jun 2024
-# )
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
+  mutate(
+    median_name = if_else(between(date, as.Date("2022-07-01"), as.Date("2025-04-01")), "post-pandemic median", NA)
+      )
 
 saveRDS(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
 
 gestation_by_BAPM_LOC <- readRDS(paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
 
-# ### 6- Create data frames to be used in SPBAND ----
-# 
-# ### 6a - Create runchart dataframe ----
-# 
-# BAPM_LOC_runchart_dataframe <- gestation_by_BAPM_LOC %>% 
-#   filter(measure_cat %in% BAPM_LOC_runchart_categories) 
-# 
-# ### i - MEDIAN of measure_value ----
-# 
-# # calculate the MEDIAN of the measure_value variable over the relevant median_name - plotted as a solid line
-# 
-# BAPM_LOC_runchart_dataframe <- calculate_medians(dataset = BAPM_LOC_runchart_dataframe,
-#                                                  measure_value = measure_value,
-#                                                  subgroup_cat = subgroup_cat)
-# 
-# ### ii - Mark SHIFTS and TRENDS ----
-# 
-# # compares measure_value with extended to determine shifts
-# # compares consecutive measure_values to determine trends
-# 
-# BAPM_LOC_runchart_dataframe <- runchart_flags(
-#   dataset = BAPM_LOC_runchart_dataframe,
-#   shift = "orig_shift",
-#   trend = "orig_trend",
-#   value = measure_value,
-#   median = extended)
-# 
-# # Set up data for "trend" and "shift" traces
-# # We don't want to use this data to plot anything that is not part of a
-# # trend or shift, so just set FALSE-flagged data to NA
-# 
-# BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe %>% 
-#   mutate(
-#     trend = 
-#       if_else(orig_trend == TRUE, 
-#               measure_value, NA), # copies measure_value to plot as trend
-#     shift =
-#       if_else(orig_shift == TRUE,
-#               measure_value, NA) # copies measure_value to plot as shift
-#   )
-# 
-# # split adjacent shifts and trends that should not be connected
-# 
-# BAPM_LOC_runchart_dataframe <- add_split_gaps(
-#   dataset = BAPM_LOC_runchart_dataframe,
-#   measure = "trend",
-#   split_col_prefix = "orig_trend") %>% 
-#   rename(c("trend_num_rows" = "num_rows", "trend_dup_row" = "dup_row"))
-# 
-# BAPM_LOC_runchart_dataframe <- add_split_gaps(
-#   dataset = BAPM_LOC_runchart_dataframe,
-#   measure = "shift",
-#   split_col_prefix = "orig_shift") %>% 
-#   rename(c("shift_num_rows" = "num_rows", "shift_dup_row" = "dup_row"))
-# 
-# # reset extended values to NA where median values exist (bar last median value)
-# 
-# BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe %>%
-#   group_by(dataset, hbtype, hbname, period, measure, measure_cat, subgroup_cat, median_name) %>% 
-#   mutate(extended = if_else(
-#     !is.na(median) & !is.na(extended) & is.na(lead(median)),
-#     median, NA),
-#     extended = na.locf(extended, na.rm = FALSE)
-#   )
-# 
-# # pivot wider to split median and extended into separate columns based on median_name
-# 
-# BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe %>%
-#   mutate(median_name2 = median_name) %>% 
-#   pivot_wider(names_from = median_name2,
-#               values_from = median,
-#               values_fill = NULL,
-#               names_sort = TRUE)
-# 
-# BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe %>% 
-#   pivot_wider(names_from = median_name, 
-#               values_from = extended,
-#               values_fill = NULL,
-#               names_prefix = "extended ",
-#               names_sort = TRUE)
-# 
-# BAPM_LOC_runchart_dataframe <- BAPM_LOC_runchart_dataframe %>% 
-#   janitor::clean_names()
-# 
-# # to check whether any duplicate rows have been added to split trends or shifts - don't want these in the download data - wikl be removed in 6 - Create download dataframes.R anyway
-# 
-# print(max(c(BAPM_LOC_runchart_dataframe$trend_num_rows,
-#                             BAPM_LOC_runchart_dataframe$shift_num_rows))
-# )
-# 
-# saveRDS(BAPM_LOC_runchart_dataframe, paste0(data_path, "/BAPM_LOC_runchart_dataframe.rds"))
-# 
-# BAPM_LOC_runchart_dataframe <- readRDS(paste0(data_path, "/BAPM_LOC_runchart_dataframe.rds"))
-# 
-# ### 7 - Match runchart data to main dataframe ----
-# 
-# gestation_by_BAPM_LOC <- left_join(gestation_by_BAPM_LOC, BAPM_LOC_runchart_dataframe,
-#                                    by = c("dataset", "hbtype", "hbname", "date", "period", "subgroup_cat", "den", "measure_cat", "num", "measure_value", "suffix", "measure", "subgroup"))
+### 6 - Create data frames to be used in SPBAND ----
+
+### 6a - Create runchart dataframe ----
+
+# gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+#   filter(measure_cat %in% bapm_level_of_care_runchart_categories)
+
+### i - MEDIAN of measure_value ----
+
+# calculate the MEDIAN of the measure_value variable over the relevant median_name - plotted as a solid line
+
+gestation_by_BAPM_LOC <- calculate_medians(dataset = gestation_by_BAPM_LOC,
+                                           measure_value = measure_value,
+                                           subgroup_cat = subgroup_cat)
+
+# reset extended values to NA where median values exist (bar last median value)
+
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+  group_by(dataset, hbtype, hbname, period, measure, measure_cat, subgroup_cat, median_name) %>%
+  mutate(extended = if_else(
+    !is.na(median) & !is.na(extended) & is.na(lead(median)),
+    median, NA),
+    extended = na.locf(extended, na.rm = FALSE)
+  )
+
+# pivot wider to split median and extended into separate columns based on median_name
+
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+  mutate(median_name2 = median_name) %>%
+  pivot_wider(names_from = median_name2,
+              values_from = median,
+              values_fill = NULL,
+              names_sort = TRUE)
+
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+  pivot_wider(names_from = median_name,
+              values_from = extended,
+              values_fill = NULL,
+              names_prefix = "extended ",
+              names_sort = TRUE)
+
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+  janitor::clean_names() %>% 
+  janitor::remove_empty(., which = c("cols"), quiet = TRUE) 
+
+# reset measure_value for babies born alive
+
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+  mutate(measure_value = if_else(measure_cat == '5', NA, measure_value)
+         )
+
+# set factor levels for measure_cat
+
+gestation_by_BAPM_LOC$measure_cat =
+  factor(gestation_by_BAPM_LOC$measure_cat, levels = c(0, 1, 2, 3, 4, 5),
+         labels = c("all admissions to a neonatal unit",
+                    "intensive care",
+                    "high dependency care",
+                    "special care",
+                    "normal care",
+                    "babies born alive"),
+         ordered = TRUE
+  )
+
+# set factor levels for subgroup_cat
+
+gestation_by_BAPM_LOC$subgroup_cat =
+  factor(gestation_by_BAPM_LOC$subgroup_cat, levels = c(1, 2),
+         labels = c("between 34 and 36 weeks (inclusive)", # late pre-term
+                    "between 37 and 42 weeks (inclusive)"), # term/post-term
+         ordered = TRUE
+  )
+
+saveRDS(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
+
+gestation_by_BAPM_LOC <- readRDS(paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
 
 ### 8 - Tidy up and save required variables ----
 
 # add on the num, den, measure_value metadata for the data download
 
-gestation_by_BAPM_LOC <-  merge(gestation_by_BAPM_LOC, metadata)
+gestation_by_BAPM_LOC <- merge(gestation_by_BAPM_LOC, metadata)
 
 # Add "nicenames"
 
@@ -465,37 +608,35 @@ long_formatted_name <- c(paste0("late pre-term (34", "<sup>+0</sup>", " to 36", 
                     paste0("term/post-term (37", "<sup>+0</sup>", " to 41", "<sup>+6</sup>", " weeks gestation)")
                     )
 
-nicename <- tibble(BAPM_LOC_subgroup_categories, short_formatted_name, long_formatted_name)
+nicename <- tibble(bapm_level_of_care_subgroup_categories, short_formatted_name, long_formatted_name)
 
-nicename$BAPM_LOC_subgroup_categories <- factor(nicename$BAPM_LOC_subgroup_categories, levels = BAPM_LOC_subgroup_categories)
+nicename$bapm_level_of_care_subgroup_categories <- factor(nicename$bapm_level_of_care_subgroup_categories, levels = bapm_level_of_care_subgroup_categories, ordered = TRUE)
 
-nicename$short_formatted_name <- factor(nicename$short_formatted_name, levels = short_formatted_name)
+nicename$short_formatted_name <- factor(nicename$short_formatted_name, levels = short_formatted_name, ordered = TRUE)
 
-nicename$long_formatted_name <- factor(nicename$long_formatted_name, levels = long_formatted_name)
+nicename$long_formatted_name <- factor(nicename$long_formatted_name, levels = long_formatted_name, ordered = TRUE)
 
 gestation_by_BAPM_LOC <- left_join(gestation_by_BAPM_LOC,
                                    nicename,
-                                   by = c("subgroup_cat" = "BAPM_LOC_subgroup_categories")
+                                   by = c("subgroup_cat" = "bapm_level_of_care_subgroup_categories")
 )
 
 # add date_label and round values, order variables for download dataframe
 
-gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
+gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
   arrange(date) %>%
   mutate(date_label = qtr(ymd(date), format = "short"),
-         date_label = factor(date_label, levels = unique(date_label), ordered = TRUE)
-         #across(c(measure_value, pre_pandemic_median:extended_pre_pandemic_median, trend, shift), ~ round(., 3))
+         date_label = factor(date_label, levels = unique(date_label), ordered = TRUE),
+         across(c(measure_value, post_pandemic_median:extended_post_pandemic_median), ~ round(., 3))
   ) %>%
-  arrange(subgroup_cat, date, measure_cat) %>% 
+  arrange(date, subgroup_cat, measure_cat) %>% 
   ungroup()
 
 gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>% 
-  select("dataset", "measure", "hbtype", "hbname", "period", "date", "date_label", "subgroup_cat", "measure_cat", "num", "den", "measure_value", "suffix",  "short_formatted_name", "long_formatted_name", "num_description", "den_description", "measure_value_description", "plotted_on_charts", "shown_on_MIO") # "median_name", "pre_pandemic_median",  "extended_pre_pandemic_median", "trend", "shift", "post_pandemic_median", "extended_post_pandemic_median",
+  select("dataset", "measure", "hbtype", "hbname", "period", "date", "date_label", "subgroup_cat", "measure_cat", "num", "den", "measure_value", "suffix",  "short_formatted_name", "long_formatted_name", "num_description", "den_description", "measure_value_description", "plotted_on_charts", "post_pandemic_median", "extended_post_pandemic_median", "shown_on_MIO")
 
 saveRDS(gestation_by_BAPM_LOC, paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds"))
 
-gestation_by_BAPM_LOC <- readRDS(paste0(dashboard_dataframes_folder, "/", "gestation-by-BAPM-level-of-care.rds"))
-
-write.csv(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.csv"), row.names = FALSE)
+# write.csv(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.csv"), row.names = FALSE)
 
 ## - END OF SCRIPT ----

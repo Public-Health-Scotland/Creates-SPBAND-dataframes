@@ -50,6 +50,7 @@ location_mapping <- as_tibble(dbGetQuery(denodo_connect,
 # identify babies born at 30-32 weeks' gestation inclusive with a discharge_date and a valid baby_upi
 # note that the BadgerNet episode numbers for a baby may not always be in order so this is ignored and a new field called episode_number is added based on the date_time_of_admission and date_time_of_discharge for each episode for the baby.
 # the count of the number_of_episodes for each baby is also derived, as is the delay between the discharge from one episode and the admission for the next episode for each baby.
+# This code also checks for deleted records and removes them from the cohort.
 
 initial_cohort_30_32_weeks <- as_tibble(dbGetQuery(denodo_connect,
                                        "SELECT
@@ -201,7 +202,7 @@ saveRDS(completed_episodes_30_32_weeks, paste0(data_path, "/", "completed_episod
 
 # The cohort contains a subset of the number of babies born alive at 30-32 weeks gestation who were admitted to a specialist care neonatal unit. A baby may have had a stay in multiple neonatal units. This analysis looks for the first discharge to Home or to Foster Care. The LOS in specialist neonatal care is added to their birth gestation to calculate their [corrected] gestational age at this first discharge. The cohort is selected in this order:
 
-# with the initial cohort contains babies born at 30+0 to 32+6 weeks' gestation
+# with the initial cohort which contains babies born at 30+0 to 32+6 weeks' gestation
 # identify episode_number(s) where a baby was sent HOME or to FOSTER CARE i.e. (discharge_destination_code %in% c('1', '4'))
 # look for repeat babies and identify the first spell of care (i.e. remove subsequent spells)
 # identify and remove babies who had major surgery (in any spell)
@@ -454,13 +455,9 @@ nrow(completed_episodes_30_32_weeks_first_spell) # number of episodes
 
 length(unique(completed_episodes_30_32_weeks_first_spell$baby_upi)) # number of babies
 
-saveRDS(completed_episodes_30_32_weeks_first_spell, paste0(data_path, "/", "completed_episodes_30_32_weeks_first_spell.rds"))
-
 rm(delays) # tidy up
 
 ### 6 - Analysis for SPBAND measure ----
-
-completed_episodes_30_32_weeks_first_spell <- readRDS(paste0(data_path, "/", "completed_episodes_30_32_weeks_first_spell.rds"))
 
 # check episode_number of "last" episodes
 
@@ -489,9 +486,13 @@ completed_episodes_30_32_weeks_last_episode <- completed_episodes_30_32_weeks_fi
          ) %>% 
   filter(quarter_of_discharge <= cut_off_date_Qtrly)
 
+saveRDS(completed_episodes_30_32_weeks_first_spell, paste0(data_path, "/", "completed_episodes_30_32_weeks_first_spell.rds"))
+
 nrow(completed_episodes_30_32_weeks_last_episode) # number of episodes
 
 length(unique(completed_episodes_30_32_weeks_last_episode$baby_upi)) # number of babies
+
+completed_episodes_30_32_weeks_first_spell <- readRDS(paste0(data_path, "/", "completed_episodes_30_32_weeks_first_spell.rds"))
 
 # add common fields for use in the SPBAND ----
 
