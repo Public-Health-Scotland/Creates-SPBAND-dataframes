@@ -4,7 +4,7 @@
     "Repositories": [
       {
         "Name": "CRAN",
-        "URL": "https://ppm-prod.publichealthscotland.org/cran/__linux__/jammy/latest"
+        "URL": "https://ppm-prod.publichealthscotland.org/cran/latest"
       },
       {
         "Name": "PHSGITHUB",
@@ -1152,7 +1152,7 @@
       "NeedsCompilation": "no",
       "Author": "Hadley Wickham [aut, cre], Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)",
       "Maintainer": "Hadley Wickham <hadley@posit.co>",
-      "Repository": "RSPM"
+      "Repository": "CRAN"
     },
     "fs": {
       "Package": "fs",
@@ -2412,7 +2412,7 @@
     "phsmethods": {
       "Package": "phsmethods",
       "Version": "1.0.2.9000",
-      "Source": "PHSGITHUB",
+      "Source": "GitHub",
       "Title": "Standard Methods for Use in Public Health Scotland",
       "Authors@R": "c( person(\"Public Health Scotland\", , , \"phs.datascience@phs.scot\", role = \"cph\"), person(\"David\", \"Caldwell\", , \"David.Caldwell@phs.scot\", role = \"aut\"), person(\"Lucinda\", \"Lawrie\", , \"Lucinda.Lawrie@phs.scot\", role = \"rev\"), person(\"Jack\", \"Hannah\", , \"jack.hannah2@phs.scot\", role = \"aut\"), person(\"Tina\", \"Fu\", , \"Yuyan.Fu2@phs.scot\", role = c(\"aut\", \"cre\")), person(\"Ciara\", \"Gribben\", , \"Ciara.Gribben@phs.scot\", role = \"aut\"), person(\"Chris\", \"Deans\", , \"Chris.Deans2@phs.scot\", role = \"aut\"), person(\"Jaime\", \"Villacampa\", , \"Jaime.Villacampa@phs.scot\", role = \"aut\"), person(\"Graeme\", \"Gowans\", , \"Graeme.Gowans@phs.scot\", role = \"aut\"), person(\"Alice\", \"Byers\", role = \"ctb\"), person(\"Alan\", \"Yeung\", , \"Alan.Yeung@phs.scot\", role = \"ctb\"), person(\"James\", \"Hayes\", , \"James.Hayes2@phs.scot\", role = \"aut\", comment = c(ORCID = \"0000-0002-5380-2029\")), person(\"Nicolaos\", \"Christofidis\", , \"nicolaos.christofidis@phs.scot\", role = \"aut\") )",
       "Description": "A collection of methods for commonly undertaken analytical tasks, primarily developed for Public Health Scotland (PHS) analysts, but the package is also generally useful to others working in the healthcare space, particularly since it has functions for working with Community Health Index (CHI) numbers. The package can help to make data manipulation and analysis more efficient and reproducible.",
@@ -2467,7 +2467,7 @@
     "phsstyles": {
       "Package": "phsstyles",
       "Version": "0.1.2",
-      "Source": "PHSGITHUB",
+      "Source": "GitHub",
       "Title": "Standard Graphic Styles for use in Public Health Scotland",
       "Authors@R": "c( person(\"Tina\", \"Fu\", email = \"Yuyan.Fu2@phs.scot\", role = c(\"aut\", \"cre\")),  person(\"Bob\", \"Taylor\", email = \"bob.taylor2@phs.scot\", role = \"aut\") )",
       "Description": "Bespoke functions for creating graphics and visualisations in Public Health Scotland.",
@@ -3059,7 +3059,7 @@
       "NeedsCompilation": "no",
       "Author": "JJ Allaire [aut], Yihui Xie [aut, cre] (ORCID: <https://orcid.org/0000-0003-0645-5666>), Christophe Dervieux [aut] (ORCID: <https://orcid.org/0000-0003-4474-2498>), Jonathan McPherson [aut], Javier Luraschi [aut], Kevin Ushey [aut], Aron Atkins [aut], Hadley Wickham [aut], Joe Cheng [aut], Winston Chang [aut], Richard Iannone [aut] (ORCID: <https://orcid.org/0000-0003-3925-190X>), Andrew Dunning [ctb] (ORCID: <https://orcid.org/0000-0003-0464-5036>), Atsushi Yasumoto [ctb, cph] (ORCID: <https://orcid.org/0000-0002-8335-495X>, cph: Number sections Lua filter), Barret Schloerke [ctb], Carson Sievert [ctb] (ORCID: <https://orcid.org/0000-0002-4958-2844>), Devon Ryan [ctb] (ORCID: <https://orcid.org/0000-0002-8549-0971>), Frederik Aust [ctb] (ORCID: <https://orcid.org/0000-0003-4900-788X>), Jeff Allen [ctb], JooYoung Seo [ctb] (ORCID: <https://orcid.org/0000-0002-4064-6012>), Malcolm Barrett [ctb], Rob Hyndman [ctb], Romain Lesur [ctb], Roy Storey [ctb], Ruben Arslan [ctb], Sergio Oller [ctb], Posit Software, PBC [cph, fnd], jQuery UI contributors [ctb, cph] (jQuery UI library; authors listed in inst/rmd/h/jqueryui/AUTHORS.txt), Mark Otto [ctb] (Bootstrap library), Jacob Thornton [ctb] (Bootstrap library), Bootstrap contributors [ctb] (Bootstrap library), Twitter, Inc [cph] (Bootstrap library), Alexander Farkas [ctb, cph] (html5shiv library), Scott Jehl [ctb, cph] (Respond.js library), Ivan Sagalaev [ctb, cph] (highlight.js library), Greg Franko [ctb, cph] (tocify library), John MacFarlane [ctb, cph] (Pandoc templates), Google, Inc. [ctb, cph] (ioslides library), Dave Raggett [ctb] (slidy library), W3C [cph] (slidy library), Dave Gandy [ctb, cph] (Font-Awesome), Ben Sperry [ctb] (Ionicons), Drifty [cph] (Ionicons), Aidan Lister [ctb, cph] (jQuery StickyTabs), Benct Philip Jonsson [ctb, cph] (pagebreak Lua filter), Albert Krewinkel [ctb, cph] (pagebreak Lua filter)",
       "Maintainer": "Yihui Xie <xie@yihui.name>",
-      "Repository": "RSPM"
+      "Repository": "CRAN"
     },
     "rprojroot": {
       "Package": "rprojroot",
