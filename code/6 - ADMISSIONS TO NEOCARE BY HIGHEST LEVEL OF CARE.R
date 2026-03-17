@@ -515,14 +515,12 @@ saveRDS(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.rds
 
 gestation_by_BAPM_LOC <- readRDS(paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
 
-### 6 - Create data frames to be used in SPBAND ----
-
-### 6a - Create runchart dataframe ----
+### 4 - Create runchart data frame to be used in SPBAND ----
 
 # gestation_by_BAPM_LOC <- gestation_by_BAPM_LOC %>%
 #   filter(measure_cat %in% bapm_level_of_care_runchart_categories)
 
-### i - MEDIAN of measure_value ----
+### MEDIAN of measure_value ----
 
 # calculate the MEDIAN of the measure_value variable over the relevant median_name - plotted as a solid line
 
@@ -592,7 +590,7 @@ saveRDS(gestation_by_BAPM_LOC, paste0(data_path, "/", "gestation_by_BAPM_LOC.rds
 
 gestation_by_BAPM_LOC <- readRDS(paste0(data_path, "/", "gestation_by_BAPM_LOC.rds"))
 
-### 8 - Tidy up and save required variables ----
+### 5 - Tidy up and save required variables ----
 
 # add on the num, den, measure_value metadata for the data download
 
