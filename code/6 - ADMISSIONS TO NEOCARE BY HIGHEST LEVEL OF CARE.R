@@ -323,12 +323,12 @@ completed_episodes_loc_with_daily_data <- left_join(completed_episodes_loc, dail
 length(unique(completed_episodes_loc_with_daily_data$neocare_episode_unique_id))
 length(unique(completed_episodes_loc_with_daily_data$baby_upi))
 
-saveRDS(completed_episodes_loc_with_daily_data, paste0(data_path, "/", "completed_episodes_loc_with_daily_data"))
+saveRDS(completed_episodes_loc_with_daily_data, paste0(data_path, "/", "completed_episodes_loc_with_daily_data.rds"))
 
 # group by baby_upi to determine minimum highest level of care codes ----
 # remove babies with a missing minimum bapm2011_level_of_care_code
 
-completed_episodes_loc_with_daily_data <- readRDS(paste0(data_path, "/", "completed_episodes_loc_with_daily_data"))
+completed_episodes_loc_with_daily_data <- readRDS(paste0(data_path, "/", "completed_episodes_loc_with_daily_data.rds"))
 
 highest_level_of_care <- completed_episodes_loc_with_daily_data %>%
   group_by(baby_upi) %>%
