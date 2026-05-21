@@ -92,7 +92,7 @@ bapm_level_of_care_subgroup_categories <- c("between 34 and 36 weeks (inclusive)
 # Investigate whether there are missing discharge dates where there are no recent daily records
 
 # Units differ in practice - some babies transferred to transitional care are placed onto 
-# BAdgerNet Maternity
+# BadgerNet Maternity
 
 # perform counts on this data (section 5)
 
