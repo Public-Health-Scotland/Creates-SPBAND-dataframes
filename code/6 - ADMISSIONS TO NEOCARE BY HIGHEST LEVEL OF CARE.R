@@ -64,7 +64,7 @@ bapm_level_of_care_subgroup_categories <- c("between 34 and 36 weeks (inclusive)
 
 # Variables required from NeoCareIn+
 # Born in Scotland = location_of_delivery_code [char] maps to Scottish NHS Board
-# Baby CHI or encrypted CHI (check no repeats) = baby_national_id [char]
+# Baby CHI or encrypted CHI (check no repeats) = baby_chi [char]
 # Date of birth = baby_birth_date_time [DateTime] >= 01 Jan 2018 00:00
 # Gestation at delivery (completed weeks) [integer]
 # First admission date >= 01 Jan 2018 00:00 = date_time_of_admission [DateTime] not more # than 24 hours following birth to include BBA
@@ -84,11 +84,11 @@ bapm_level_of_care_subgroup_categories <- c("between 34 and 36 weeks (inclusive)
 # Babies with a missing gestation at birth
 # Babies with a missing BAPM2011 level of care (even one?)
 # Babies with a missing discharge date
-# Any subsequent episodes of care after discharge home/foster care
+# Any subsequent episodes of care after a discharge home/into foster care
 # These may be identified by admission from D201N if not already identified by a discharge home/to foster care
 
 # Investigate how many babies are in Ward Location = 2 their entire stay
-# Investigate whether Ward Location (highest_level_of_aare) correlates with bapm2011_level_of_care
+# Investigate whether Ward Location (highest_level_of_care) correlates with bapm2011_level_of_care
 # Investigate whether there are missing discharge dates where there are no recent daily records
 
 # Units differ in practice - some babies transferred to transitional care are placed onto 
