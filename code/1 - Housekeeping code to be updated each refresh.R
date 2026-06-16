@@ -39,18 +39,18 @@ source(here("code", "functions.R"))
 
 # set refresh date (based on when this code is run rather than when the files were created)
 
-refresh_date <- as.Date("2026-02-25") # change this each time the data is updated
+refresh_date <- as.Date("2026-06-16") # change this each time the data is updated
 
 # set cut-off date - what month are we happy to publish to?
 
-cut_off_date <- ymd("2025-09-01") # month beginning, usually increments by 3 months
-cut_off_date_ABC <- ymd("2025-11-01") # month beginning (ABC more timely than SMR02)
-cut_off_date_Qtrly <- ymd("2025-07-01") # quarter beginning (most complete) e.g. Jan-Mar, usually increments by 1 quarter
+cut_off_date <- ymd("2026-03-01") # ToPs published by month, use beginning of latest month for ToPs, usually increments by 3 months 
+cut_off_date_ABC <- ymd("2026-05-01") # ABC published by month, use beginning of most complete month for ABC (ABC more timely than SMR02)
+cut_off_date_Qtrly <- ymd("2026-01-01") # SMR02 published by qtr, use beginning of most complete qtr e.g. Jan-Mar, usually increments by 1 qtr
 
 # create a vector with "complete" years (for multi indicator overview)
 # update as necessary (usually in the April and October refreshes)
 
-factor_labels_year <- c("2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017",
+factor_labels_year <- c("2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017",
                         "2024/25", "2023/24", "2022/23", "2021/22", "2020/21", "2019/20", "2018/19", "2017/18"
 )
 
@@ -78,7 +78,7 @@ file.exists(terminations_filename)
 
 # update file name that contains NRS quarterly data (published)
 
-NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2025 Q3 - Table Q1.xlsx"
+NRS_filename <- "../basefiles/NRS/Births deaths and other vital events - 2026 Q1 - Table Q1.xlsx"
 
 file.exists(NRS_filename)
 
