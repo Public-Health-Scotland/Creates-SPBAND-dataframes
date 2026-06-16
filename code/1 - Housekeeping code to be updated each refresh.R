@@ -47,7 +47,7 @@ cut_off_date <- ymd("2026-03-01") # ToPs published by month, use beginning of la
 cut_off_date_ABC <- ymd("2026-05-01") # ABC published by month, use beginning of most complete month for ABC (ABC more timely than SMR02)
 cut_off_date_Qtrly <- ymd("2026-01-01") # SMR02 published by qtr, use beginning of most complete qtr e.g. Jan-Mar, usually increments by 1 qtr
 
-# create a vector with "complete" years (for multi indicator overview)
+# create a vector with "complete" years (for multi-indicator overview)
 # update as necessary (usually in the April and October refreshes)
 
 factor_labels_year <- c("2025", "2024", "2023", "2022", "2021", "2020", "2019", "2018", "2017",
